@@ -1,24 +1,228 @@
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}
-body{font-family:Georgia,"Times New Roman",serif}
-.widget{position:relative;width:100%;height:100%;overflow:hidden}
-.art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
-.dynamic-bar{position:absolute;left:8.6%;top:80.3%;width:82.5%;height:8.6%;overflow:hidden;border-radius:999px;pointer-events:none}
-.dynamic-fill{position:absolute;left:0;top:8%;height:84%;width:37.5%;
-background:linear-gradient(90deg,#8b0008 0%,#ff1b29 48%,#a4000b 100%);
-box-shadow:0 0 16px #ff1828, inset 0 3px 6px #ff9b9f55;
-border-radius:999px;transition:width 1.2s cubic-bezier(.18,.82,.2,1)}
-.bar-shine{position:absolute;inset:8% 0;border-radius:999px;
-background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.16) 46%,transparent 55%);
-mix-blend-mode:screen}
-.bar-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-gap:8px;color:#fff;font-weight:700;font-size:clamp(15px,2.1vw,31px);
-text-shadow:0 2px 5px #000,0 0 9px #000;letter-spacing:.5px}
-.sep{opacity:.65}.percent{position:absolute;right:2.5%;top:50%;transform:translateY(-50%);
-color:#fff;font-size:clamp(12px,1.35vw,20px);font-weight:700;text-shadow:0 2px 4px #000}
-.flash{position:absolute;inset:0;background:radial-gradient(circle at 50% 82%,#ff182855,transparent 30%);
-opacity:0;pointer-events:none}.flash.active{animation:flash .65s ease-out}
-@keyframes flash{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
-.donation{position:absolute;left:50%;top:73%;transform:translateX(-50%);
-color:#fff;font-weight:700;font-size:clamp(12px,1.25vw,19px);text-shadow:0 2px 5px #000;
-opacity:0;white-space:nowrap;pointer-events:none}.donation.show{animation:donation 2.8s ease-out}
-@keyframes donation{0%{opacity:0;transform:translate(-50%,10px)}15%,70%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-12px)}}
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:transparent;
+}
+
+body{
+    font-family:Georgia,"Times New Roman",serif;
+}
+
+.widget{
+    position:relative;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+}
+
+.art{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    display:block;
+}
+
+/* Динамическая часть донат-бара */
+.dynamic-bar{
+    position:absolute;
+    left:25.5%;
+    top:80.8%;
+    width:57%;
+    height:6.3%;
+    overflow:hidden;
+    border-radius:999px;
+    pointer-events:none;
+}
+
+.dynamic-fill{
+    position:absolute;
+    left:0;
+    top:7%;
+    height:86%;
+    width:37.5%;
+
+    background:
+        linear-gradient(
+            90deg,
+            #8b0008 0%,
+            #ff1b29 48%,
+            #a4000b 100%
+        );
+
+    box-shadow:
+        0 0 16px #ff1828,
+        inset 0 3px 6px #ff9b9f55;
+
+    border-radius:999px;
+
+    transition:
+        width 1.2s cubic-bezier(.18,.82,.2,1);
+}
+
+.bar-shine{
+    position:absolute;
+    inset:8% 0;
+    border-radius:999px;
+
+    background:
+        linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255,255,255,.16) 46%,
+            transparent 55%
+        );
+
+    mix-blend-mode:screen;
+}
+
+.bar-text{
+    position:absolute;
+    inset:0;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    gap:8px;
+
+    color:#fff;
+
+    font-weight:700;
+
+    font-size:clamp(
+        15px,
+        2.1vw,
+        31px
+    );
+
+    text-shadow:
+        0 2px 5px #000,
+        0 0 9px #000;
+
+    letter-spacing:.5px;
+}
+
+.sep{
+    opacity:.65;
+}
+
+.percent{
+    position:absolute;
+
+    right:1.5%;
+    top:50%;
+
+    transform:translateY(-50%);
+
+    color:#fff;
+
+    font-size:clamp(
+        12px,
+        1.35vw,
+        20px
+    );
+
+    font-weight:700;
+
+    text-shadow:
+        0 2px 4px #000;
+}
+
+.flash{
+    position:absolute;
+    inset:0;
+
+    background:
+        radial-gradient(
+            circle at 50% 82%,
+            #ff182855,
+            transparent 30%
+        );
+
+    opacity:0;
+
+    pointer-events:none;
+}
+
+.flash.active{
+    animation:flash .65s ease-out;
+}
+
+@keyframes flash{
+    0%{
+        opacity:0;
+    }
+
+    15%{
+        opacity:1;
+    }
+
+    100%{
+        opacity:0;
+    }
+}
+
+.donation{
+    position:absolute;
+
+    left:50%;
+    top:73%;
+
+    transform:translateX(-50%);
+
+    color:#fff;
+
+    font-weight:700;
+
+    font-size:clamp(
+        12px,
+        1.25vw,
+        19px
+    );
+
+    text-shadow:
+        0 2px 5px #000;
+
+    opacity:0;
+
+    white-space:nowrap;
+
+    pointer-events:none;
+}
+
+.donation.show{
+    animation:donation 2.8s ease-out;
+}
+
+@keyframes donation{
+
+    0%{
+        opacity:0;
+        transform:translate(-50%,10px);
+    }
+
+    15%,70%{
+        opacity:1;
+        transform:translate(-50%,0);
+    }
+
+    100%{
+        opacity:0;
+        transform:translate(-50%,-12px);
+    }
+}
+
+@media(max-width:900px){
+
+    .dynamic-bar{
+        left:25%;
+        width:58%;
+        top:80.5%;
+        height:6.5%;
+    }
+
+}
