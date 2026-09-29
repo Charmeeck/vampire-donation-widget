@@ -50,7 +50,7 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
     history.replaceState({},'',location.pathname+location.search);
   }
 
-  let current=num(q.get('current'),num(localStorage.getItem('vampire_current'),0));
+  let current=num(q.get('current'),num(localStorage.getItem('vampire_current'),100));
   let goal=num(q.get('goal'),num(localStorage.getItem('vampire_goal'),10000));
   if(current<0)current=0;
   if(goal<=0)goal=10000;
