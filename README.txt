@@ -1,14 +1,30 @@
-КРОВАВЫЙ АЛТАРЬ — новая версия
+VAMPIRE DONATION WIDGET — UNIVERSAL
+
+Готовая версия для GitHub Pages + OBS.
 
 Файлы:
-- altar.png — новая графика с верхним баром и резервуаром снизу
-- index.html
-- style.css
-- script.js
+- index.html — страница настройки и OAuth callback.
+- setup.html — копия страницы настройки.
+- liquid-vial.html — динамическая колба.
+- vial-frame-clean.png — оформление колбы.
+- config.js — Client ID DonationAlerts.
 
-Тест:
-https://ВАШ_АДРЕС/?demo=1000
+Текущий Client ID: 21478
+Redirect URL: https://charmeeck.github.io/vampire-donation-widget/
 
-Текущий тестовый прогресс: 3 750 / 10 000 ₽.
+ВАЖНО:
+- Client ID можно использовать в браузерном приложении.
+- Client Secret/API-ключ никому не передавайте и не размещайте в GitHub.
+- В DonationAlerts Redirect URL должен точно совпадать с адресом выше.
 
-Для GitHub Pages замените старые altar.png, index.html, style.css и script.js на эти файлы.
+Проверка:
+1. Загрузите файлы в репозиторий vampire-donation-widget.
+2. Откройте GitHub Pages URL.
+3. Введите сумму/цель и нажмите «Подключить DonationAlerts».
+4. Разрешите доступ в DonationAlerts.
+5. После возврата откроется колба.
+6. В OBS добавьте liquid-vial.html как Browser Source, 380x411.
+
+Примечание:
+Интеграция использует OAuth implicit grant и канал обновлений целей DonationAlerts.
+Если браузер блокирует CORS-запросы DonationAlerts, понадобится небольшой промежуточный backend/Worker; сам дизайн колбы при этом менять не нужно.
