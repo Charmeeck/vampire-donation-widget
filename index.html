@@ -158,10 +158,18 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
       // On the first history read, remember existing records but do not add
       // them: the starting value of a newly created goal is controlled by
       // the goal event or the setup value.
-      const firstSync=!localStorage.getItem('vampire_history_baseline_v2');
+      const firstSync=!localStorage.getItem('vampire_history_baseline_v3');
       if(firstSync){
-        list.forEach(d=>remember(d.id));
-        localStorage.setItem('vampire_history_baseline_v2','1');
+        // One-time recovery: include only very recent donations so a test
+        // donation made just before this build is not lost.
+        const since=Date.now()-20*60*1000;
+        for(const d of list){
+          const ts=Date.parse(String(d.created_at||'').replace(' ','T'));
+          const isRecent=Number.isFinite(ts) ? ts>=since : false;
+          if(isRecent && d && d.id!==undefined && d.id!==null) applyDonation(d);
+          else if(d&&d.id!==undefined&&d.id!==null) remember(d.id);
+        }
+        localStorage.setItem('vampire_history_baseline_v3','1');
         return;
       }
 
