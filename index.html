@@ -1,46 +1,7 @@
-<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=1735,height=850,initial-scale=1">
-<title>Vampire Donation Widget</title>
-<style>
-html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden}
-.stage{position:relative;width:1735px;height:850px}
-.vial{position:absolute;left:677px;top:245px;width:380px;height:411px;border:0;z-index:1;pointer-events:none}
-.bar{position:absolute;left:177px;top:100px;width:1380px;height:86px;z-index:2}
-.bar-base{position:absolute;inset:0;background:#0b0b10;-webkit-mask:url('bar-mask.png') center/100% 100% no-repeat;mask:url('bar-mask.png') center/100% 100% no-repeat}
-.bar-fill-wrap{position:absolute;left:0;top:0;height:100%;overflow:hidden;width:0;border-radius:50px}
-.bar-fill{display:block;width:1380px;height:86px;object-fit:fill}
-.bar-shell{position:absolute;inset:0;width:1380px;height:86px;z-index:3}
-.frame{position:absolute;left:0;top:0;width:1735px;height:405px;z-index:4;pointer-events:none}
-.text{position:absolute;left:177px;top:100px;width:1380px;height:86px;z-index:5;display:flex;align-items:center;justify-content:center;pointer-events:none;font-family:Georgia,'Times New Roman',serif;font-weight:700;color:#fff;text-shadow:0 2px 3px #000,0 0 2px #000;font-size:31px}
-.percent{position:absolute;right:25px;top:30px;font-size:17px}
-</style>
-</head>
-<body>
-<div class="stage">
-  <iframe id="vial" class="vial" src="liquid-vial.html" title="Vampire vial"></iframe>
-  <div class="bar">
-    <div class="bar-base"></div>
-    <div id="fillWrap" class="bar-fill-wrap"><img class="bar-fill" src="bar-fill.png" alt=""></div>
-    <img class="bar-shell" src="bar-shell.png" alt="">
-  </div>
-  <img class="frame" src="top-frame.png" alt="">
-  <div class="text"><span id="amount">0 ₽ / 10 000 ₽</span><span id="percent" class="percent">0%</span></div>
-</div>
-<script>
-const p=new URLSearchParams(location.search);
-const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-let current=Number(p.get('current')||0), goal=Number(p.get('goal')||10000);
-try{const s=JSON.parse(localStorage.getItem('vampire_settings')||'{}');if(!p.has('current')&&s.current!=null)current=Number(s.current);if(!p.has('goal')&&s.goal!=null)goal=Number(s.goal)}catch{}
-if(p.has('demo')) current+=Number(p.get('demo'))||0;
-current=Math.max(0,current);goal=Math.max(1,goal);
-const pct=clamp(current/goal*100,0,100);
-document.getElementById('fillWrap').style.width=pct+'%';
-document.getElementById('amount').textContent=current.toLocaleString('ru-RU')+' ₽ / '+goal.toLocaleString('ru-RU')+' ₽';
-document.getElementById('percent').textContent=Math.round(pct)+'%';
-document.getElementById('vial').src='liquid-vial.html?current='+encodeURIComponent(current)+'&goal='+encodeURIComponent(goal);
-</script>
-</body>
-</html>
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vampire Donation Widget</title><style>
+html,body{margin:0;background:transparent;overflow:hidden;width:100%;height:100%} .widget{position:relative;width:min(100vw,1672px);aspect-ratio:1672/941;margin:0 auto;overflow:hidden}.base{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}.overlay{position:absolute;inset:0;width:100%;height:100%}.amount{font:700 34px Georgia,serif;fill:#fff;text-anchor:middle;paint-order:stroke;stroke:#111;stroke-width:3px}.pct{font:700 18px Georgia,serif;fill:#fff;text-anchor:middle;paint-order:stroke;stroke:#111;stroke-width:2px}</style></head><body><div class="widget"><img class="base" src="altar.png"><svg class="overlay" viewBox="0 0 1672 941" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="barClip"><rect x="185" y="163" width="1288" height="73" rx="36"/></clipPath><linearGradient id="dark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#191a20"/><stop offset="1" stop-color="#07080c"/></linearGradient><linearGradient id="red" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff3144"/><stop offset=".45" stop-color="#d80e22"/><stop offset="1" stop-color="#8d0612"/></linearGradient><filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".55"/></filter></defs>
+<g clip-path="url(#barClip)"><rect x="185" y="163" width="1288" height="73" fill="url(#dark)"/><rect id="fill" x="185" y="163" width="0" height="73" fill="url(#red)"/></g>
+<!-- central jewel is already part of altar.png, so it remains visible over the dynamic bar -->
+<text id="amount" class="amount" x="836" y="209">0 ₽ / 10 000 ₽</text><text id="pct" class="pct" x="1434" y="209">0%</text></svg></div><script>
+const p=new URLSearchParams(location.search);let current=Number(p.get('current')||0),goal=Number(p.get('goal')||10000);try{const s=JSON.parse(localStorage.getItem('vampire_settings')||'{}');if(!p.has('current')&&s.current!=null)current=Number(s.current);if(!p.has('goal')&&s.goal!=null)goal=Number(s.goal)}catch{}if(p.has('demo'))current+=Number(p.get('demo'))||0;function setProgress(c,g){c=Number(c)||0;g=Number(g)||1;const pct=Math.max(0,Math.min(100,c/g*100));document.getElementById('fill').setAttribute('width',1288*pct/100);document.getElementById('amount').textContent=Math.round(c).toLocaleString('ru-RU')+' ₽ / '+Math.round(g).toLocaleString('ru-RU')+' ₽';document.getElementById('pct').textContent=Math.round(pct)+'%'}setProgress(current,goal);window.setDonationProgress=setProgress;
+</script></body></html>
