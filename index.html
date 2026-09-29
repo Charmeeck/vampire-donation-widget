@@ -2,39 +2,45 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=1735,height=850,initial-scale=1">
 <title>Vampire Donation Widget</title>
 <style>
-html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent}
-.art-frame{position:relative;width:100%;max-width:1672px;aspect-ratio:1672/941;margin:0 auto}
-.art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
-/* Полоса совмещена с внутренним пазом altar.png */
-.donation-bar{position:absolute;left:10.9%;top:12.7%;width:77.8%;height:8.8%;border-radius:999px;overflow:hidden;box-sizing:border-box;background:linear-gradient(180deg,#18171d 0%,#07070a 100%);pointer-events:none}
-.donation-fill{position:absolute;left:0;top:0;height:100%;width:0;border-radius:999px;background:linear-gradient(180deg,#ff3040 0%,#e00f22 48%,#9b0714 100%);box-shadow:inset 0 2px 4px rgba(255,255,255,.2),0 0 8px rgba(255,20,30,.35);transition:width .5s ease}
-.donation-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font:bold clamp(12px,1.55vw,25px) Georgia,"Times New Roman",serif;text-shadow:0 2px 3px #000;white-space:nowrap}
-.donation-percent{position:absolute;right:1.8%;top:50%;transform:translateY(-50%);color:#fff;font:bold clamp(9px,1vw,17px) Georgia,"Times New Roman",serif;text-shadow:0 2px 3px #000}
+html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden}
+.stage{position:relative;width:1735px;height:850px}
+.vial{position:absolute;left:677px;top:365px;width:380px;height:411px;border:0;z-index:1;pointer-events:none}
+.bar{position:absolute;left:177px;top:100px;width:1380px;height:86px;z-index:2}
+.bar-base{position:absolute;inset:0;background:#0b0b10;-webkit-mask:url('bar-mask.png') center/100% 100% no-repeat;mask:url('bar-mask.png') center/100% 100% no-repeat}
+.bar-fill-wrap{position:absolute;left:0;top:0;height:100%;overflow:hidden;width:0;border-radius:50px}
+.bar-fill{display:block;width:1380px;height:86px;object-fit:fill}
+.bar-shell{position:absolute;inset:0;width:1380px;height:86px;z-index:3}
+.frame{position:absolute;left:0;top:0;width:1735px;height:405px;z-index:4;pointer-events:none}
+.text{position:absolute;left:177px;top:100px;width:1380px;height:86px;z-index:5;display:flex;align-items:center;justify-content:center;pointer-events:none;font-family:Georgia,'Times New Roman',serif;font-weight:700;color:#fff;text-shadow:0 2px 3px #000,0 0 2px #000;font-size:31px}
+.percent{position:absolute;right:25px;top:30px;font-size:17px}
 </style>
 </head>
 <body>
-<div class="art-frame">
-<img class="art" src="altar.png" alt="">
-<div class="donation-bar">
-<div id="fill" class="donation-fill"></div>
-<div id="text" class="donation-text">0 ₽ / 10 000 ₽</div>
-<div id="percent" class="donation-percent">0%</div>
-</div>
+<div class="stage">
+  <iframe id="vial" class="vial" src="liquid-vial.html" title="Vampire vial"></iframe>
+  <div class="bar">
+    <div class="bar-base"></div>
+    <div id="fillWrap" class="bar-fill-wrap"><img class="bar-fill" src="bar-fill.png" alt=""></div>
+    <img class="bar-shell" src="bar-shell.png" alt="">
+  </div>
+  <img class="frame" src="top-frame.png" alt="">
+  <div class="text"><span id="amount">0 ₽ / 10 000 ₽</span><span id="percent" class="percent">0%</span></div>
 </div>
 <script>
-const p=new URLSearchParams(location.search),clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-let current=Number(p.get('current')),goal=Number(p.get('goal'));
+const p=new URLSearchParams(location.search);
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+let current=Number(p.get('current')||0), goal=Number(p.get('goal')||10000);
 try{const s=JSON.parse(localStorage.getItem('vampire_settings')||'{}');if(!p.has('current')&&s.current!=null)current=Number(s.current);if(!p.has('goal')&&s.goal!=null)goal=Number(s.goal)}catch{}
-if(!Number.isFinite(current))current=0;
-if(!Number.isFinite(goal)||goal<=0)goal=10000;
-if(p.has('demo'))current+=Number(p.get('demo'))||0;
+if(p.has('demo')) current+=Number(p.get('demo'))||0;
+current=Math.max(0,current);goal=Math.max(1,goal);
 const pct=clamp(current/goal*100,0,100);
-document.getElementById('fill').style.width=pct+'%';
-document.getElementById('text').textContent=Math.round(current).toLocaleString('ru-RU')+' ₽ / '+Math.round(goal).toLocaleString('ru-RU')+' ₽';
+document.getElementById('fillWrap').style.width=pct+'%';
+document.getElementById('amount').textContent=current.toLocaleString('ru-RU')+' ₽ / '+goal.toLocaleString('ru-RU')+' ₽';
 document.getElementById('percent').textContent=Math.round(pct)+'%';
+document.getElementById('vial').src='liquid-vial.html?current='+encodeURIComponent(current)+'&goal='+encodeURIComponent(goal);
 </script>
 </body>
 </html>
