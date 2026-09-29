@@ -5,19 +5,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Vampire Donation Widget</title>
 <style>
-html,body{margin:0;padding:0;background:transparent;width:100%;height:100%;overflow:hidden}
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent}
 .art-frame{position:relative;width:100%;max-width:1672px;aspect-ratio:1672/941;margin:0 auto}
-.art-frame img.art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
-/* Полоса точно внутри горизонтального паза исходной рамки */
-.donation-bar{position:absolute;left:6.5%;top:15.8%;width:87%;height:8.8%;border-radius:999px;background:linear-gradient(180deg,#17171d 0%,#08080b 100%);box-sizing:border-box;overflow:hidden;box-shadow:none}
-.donation-fill{position:absolute;left:0;top:0;height:100%;width:0%;border-radius:999px;background:linear-gradient(180deg,#ff3040 0%,#d80d20 52%,#a60614 100%);box-shadow:inset 0 1px 3px rgba(255,255,255,.18);transition:width .5s ease}
-.donation-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font:bold clamp(12px,1.55vw,25px) Georgia,serif;text-shadow:0 2px 3px #000;pointer-events:none;white-space:nowrap}
-.donation-percent{position:absolute;right:1.7%;top:50%;transform:translateY(-50%);color:#fff;font:bold clamp(9px,1vw,17px) Georgia,serif;text-shadow:0 2px 3px #000;pointer-events:none}
+.art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
+/* Полоса совмещена с внутренним пазом altar.png */
+.donation-bar{position:absolute;left:10.9%;top:12.7%;width:77.8%;height:8.8%;border-radius:999px;overflow:hidden;box-sizing:border-box;background:linear-gradient(180deg,#18171d 0%,#07070a 100%);pointer-events:none}
+.donation-fill{position:absolute;left:0;top:0;height:100%;width:0;border-radius:999px;background:linear-gradient(180deg,#ff3040 0%,#e00f22 48%,#9b0714 100%);box-shadow:inset 0 2px 4px rgba(255,255,255,.2),0 0 8px rgba(255,20,30,.35);transition:width .5s ease}
+.donation-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font:bold clamp(12px,1.55vw,25px) Georgia,"Times New Roman",serif;text-shadow:0 2px 3px #000;white-space:nowrap}
+.donation-percent{position:absolute;right:1.8%;top:50%;transform:translateY(-50%);color:#fff;font:bold clamp(9px,1vw,17px) Georgia,"Times New Roman",serif;text-shadow:0 2px 3px #000}
 </style>
 </head>
 <body>
 <div class="art-frame">
-<img class="art" src="altar.png" alt="Vampire Donation Widget">
+<img class="art" src="altar.png" alt="">
 <div class="donation-bar">
 <div id="fill" class="donation-fill"></div>
 <div id="text" class="donation-text">0 ₽ / 10 000 ₽</div>
