@@ -32,11 +32,25 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
           0    0    0    1 0"/>
       </filter>
     </defs>
-    <!-- Symmetric gothic ornaments mirrored around the central jewel. -->
-    <image href="top-ornament.svg" x="160" y="135" width="600" height="72"
-           preserveAspectRatio="none" opacity="0.72" pointer-events="none"/>
-    <image href="top-ornament.svg" x="912" y="135" width="600" height="72"
-           preserveAspectRatio="none" opacity="0.72" pointer-events="none"/>
+    <!-- Make the whole top bar perfectly symmetrical by mirroring the original red left half. -->
+    <defs>
+      <clipPath id="rightInnerBar">
+        <path d="M836 126 H1518
+                 C1546 126 1561 141 1561 170
+                 C1561 198 1546 216 1518 216
+                 H836 Z"/>
+      </clipPath>
+    </defs>
+    <g clip-path="url(#rightInnerBar)" pointer-events="none">
+      <g transform="translate(1672 0) scale(-1 1)">
+        <image href="altar.png" x="0" y="0" width="1672" height="941"/>
+      </g>
+    </g>
+    <!-- Subtle mirrored ornament line inside the bar. -->
+    <path d="M900 171 C980 154 1060 154 1140 171 C1220 188 1300 188 1380 171 C1440 158 1490 158 1530 171"
+          fill="none" stroke="#f0d7cf" stroke-width="2.5" opacity=".55" pointer-events="none"/>
+    <path d="M1530 171 C1490 184 1440 184 1380 171 C1300 154 1220 154 1140 171 C1060 188 980 188 900 171"
+          fill="none" stroke="#7f0012" stroke-width="1.2" opacity=".55" pointer-events="none"/>
     <g clip-path="url(#clip)">
       <image id="tex" href="blood-texture.png" x="707" y="350" width="264" height="455" preserveAspectRatio="none" opacity=".66"/>
       <rect id="tint" x="707" y="350" width="264" height="455" fill="url(#blood)" opacity=".42"/>
