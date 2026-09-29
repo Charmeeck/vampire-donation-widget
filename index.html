@@ -24,22 +24,14 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
         <stop offset="0" stop-color="#ff5864"/><stop offset=".18" stop-color="#ed1c35"/><stop offset=".6" stop-color="#a70018"/><stop offset="1" stop-color="#4d0009"/>
       </linearGradient>
       <filter id="blur"><feGaussianBlur stdDeviation="2.2"/></filter>
-      <filter id="redify" color-interpolation-filters="sRGB">
-        <feColorMatrix type="matrix" values="
-          1.05 0.15 0.15 0 0.08
-          0.05 0    0    0 0
-          0.04 0    0    0 0
-          0    0    0    1 0"/>
-      </filter>
     </defs>
-    <!-- Recolor only the existing dark chamber; the original texture and shape stay intact. -->
+    <!-- Paint the whole right chamber red, using the bar's own rounded contour. -->
     <defs>
-      <clipPath id="topDark">
-        <rect x="1130" y="126" width="404" height="88" rx="42"/>
+      <clipPath id="topRightFill">
+        <rect x="1035" y="119" width="500" height="100" rx="48"/>
       </clipPath>
     </defs>
-    <image href="altar.png" x="0" y="0" width="1672" height="941"
-           clip-path="url(#topDark)" filter="url(#redify)" opacity=".96" pointer-events="none"/>
+    <rect x="1035" y="119" width="500" height="100" rx="48" fill="url(#barRed)" opacity="0.98" clip-path="url(#topRightFill)"/>
     <g clip-path="url(#clip)">
       <image id="tex" href="blood-texture.png" x="707" y="350" width="264" height="455" preserveAspectRatio="none" opacity=".66"/>
       <rect id="tint" x="707" y="350" width="264" height="455" fill="url(#blood)" opacity=".42"/>
