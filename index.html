@@ -8,7 +8,7 @@
 html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hidden}
 #stage,.layer{position:absolute;left:0;top:0;width:1672px;height:941px}
 .text{font-family:Georgia,"Times New Roman",serif;font-weight:700;fill:#fff;paint-order:stroke;stroke:#1b0a0a;stroke-width:3px}
-.sum{font-size:30px}.pct{font-size:18px}
+.sum{font-size:30px}
 </style>
 </head>
 <body>
@@ -40,8 +40,8 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
   </svg>
 
   <svg class="layer" viewBox="0 0 1672 941" xmlns="http://www.w3.org/2000/svg">
-    <text id="sum" class="text sum" x="836" y="202" text-anchor="middle" dominant-baseline="middle">0 ₽ / 10 000 ₽</text>
-    <text id="pct" class="text pct" x="1434" y="202" text-anchor="middle" dominant-baseline="middle">0%</text>
+    <text id="sumCurrent" class="text sum" x="150" y="202" text-anchor="start" dominant-baseline="middle">0 ₽</text>
+    <text id="sumGoal" class="text sum" x="1522" y="202" text-anchor="end" dominant-baseline="middle">10 000 ₽</text>
   </svg>
 </div>
 
@@ -81,8 +81,8 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
     t.setAttribute('y',top); t.setAttribute('height',Math.max(0,h));
     ti.setAttribute('y',top); ti.setAttribute('height',Math.max(0,h));
     document.getElementById('surface').setAttribute('cy',top);
-    document.getElementById('sum').textContent=Math.round(c).toLocaleString('ru-RU')+' '+symbol+' / '+Math.round(g).toLocaleString('ru-RU')+' '+symbol;
-    document.getElementById('pct').textContent=Math.round(p)+'%';
+    document.getElementById('sumCurrent').textContent=Math.round(c).toLocaleString('ru-RU')+' '+symbol;
+    document.getElementById('sumGoal').textContent=Math.round(g).toLocaleString('ru-RU')+' '+symbol;
     localStorage.setItem('vampire_current',String(c));
     localStorage.setItem('vampire_goal',String(g));
   }
