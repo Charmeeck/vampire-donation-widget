@@ -1,1 +1,29 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vampire Donation Widget — настройка</title><style>body{margin:0;background:#09090b;color:#eee;font:16px Arial,sans-serif;display:flex;justify-content:center;padding:40px}.box{max-width:680px;width:100%;background:#17171b;border:1px solid #555;border-radius:14px;padding:28px;box-sizing:border-box}h1{margin-top:0;color:#d22}p{line-height:1.5;color:#ccc}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}label{display:block;margin:12px 0 6px;color:#aaa}input{width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #555;background:#0d0d10;color:#fff;font-size:16px}button{margin-top:18px;padding:13px 18px;border:0;border-radius:8px;background:#8f1018;color:#fff;font-weight:bold;cursor:pointer}.status{margin-top:18px;padding:12px;border-radius:8px;background:#101014;color:#bbb}</style></head><body><main class="box"><h1>🩸 Vampire Donation Widget</h1><p>Настрой текущую сумму и цель.</p><div class="row"><div><label>Текущая сумма</label><input id="current" type="number" min="0" value="0"></div><div><label>Цель</label><input id="goal" type="number" min="1" value="10000"></div></div><button id="save">Сохранить настройки</button><div id="status" class="status">Готово.</div></main><script>const K='vampire_settings',c=document.querySelector('#current'),g=document.querySelector('#goal');try{const x=JSON.parse(localStorage.getItem(K)||'{}');if(x.current!=null)c.value=x.current;if(x.goal!=null)g.value=x.goal}catch{}document.querySelector('#save').onclick=()=>{localStorage.setItem(K,JSON.stringify({current:Number(c.value)||0,goal:Number(g.value)||10000}));document.querySelector('#status').textContent='Настройки сохранены.'}</script></body></html>
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vampire Donation Widget — подключение</title>
+<style>
+body{margin:0;background:#09090b;color:#eee;font:16px Arial,sans-serif;display:flex;justify-content:center;padding:40px}.box{max-width:720px;width:100%;background:#17171b;border:1px solid #555;border-radius:14px;padding:28px;box-sizing:border-box}h1{margin-top:0;color:#d22}p{line-height:1.55;color:#ccc}.btn{display:inline-block;margin-top:12px;padding:14px 20px;border:0;border-radius:9px;background:#8f1018;color:#fff;font-weight:bold;text-decoration:none;cursor:pointer}.muted{color:#999;font-size:14px}.code{background:#0e0e12;border:1px solid #444;padding:10px;border-radius:8px;word-break:break-all;color:#ddd}
+</style>
+</head>
+<body>
+<main class="box">
+<h1>🩸 Подключение Vampire Donation Widget</h1>
+<p>1. Нажми кнопку ниже и разреши виджету доступ к DonationAlerts.</p>
+<a class="btn" id="connect">🔗 Подключить DonationAlerts</a>
+<p>2. После разрешения DonationAlerts вернёт тебя на страницу виджета. Ссылка с токеном будет в адресной строке — её можно вставить в OBS как Browser Source.</p>
+<p class="muted">Не публикуй эту ссылку другим людям: токен в ней даёт виджету доступ к твоим данным DonationAlerts. Client Secret для подключения здесь не нужен и его нельзя помещать в сайт.</p>
+<p class="muted">Основано на официальном OAuth и Centrifugo API DonationAlerts.</p>
+</main>
+<script src="config.js"></script>
+<script>
+const cfg=window.VAMPIRE_CONFIG||{};
+const u=new URL('https://www.donationalerts.com/oauth/authorize');
+u.searchParams.set('client_id',cfg.CLIENT_ID||'21478');
+u.searchParams.set('redirect_uri',cfg.REDIRECT_URI||location.origin+'/');
+u.searchParams.set('response_type','token');
+u.searchParams.set('scope','oauth-user-show oauth-goal-subscribe oauth-donation-subscribe');
+document.getElementById('connect').href=u.toString();
+</script>
+</body></html>

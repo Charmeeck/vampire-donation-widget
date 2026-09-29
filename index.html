@@ -1,20 +1,185 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=1672,height=941,initial-scale=1"><title>Vampire Donation Widget</title>
-<style>html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hidden}#stage,.layer{position:absolute;left:0;top:0;width:1672px;height:941px}.text{font-family:Georgia,"Times New Roman",serif;font-weight:700;fill:#fff;paint-order:stroke;stroke:#1b0a0a;stroke-width:3px}.sum{font-size:34px}.pct{font-size:22px}</style></head><body><div id="stage">
-<img class="layer" src="altar.png" alt="">
-<svg class="layer" viewBox="0 0 1672 941" xmlns="http://www.w3.org/2000/svg">
-<defs>
-<clipPath id="clip"><rect x="707" y="350" width="264" height="455" rx="62"/></clipPath>
-<linearGradient id="blood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff5864"/><stop offset=".18" stop-color="#ed1c35"/><stop offset=".6" stop-color="#a70018"/><stop offset="1" stop-color="#4d0009"/></linearGradient>
-<filter id="blur"><feGaussianBlur stdDeviation="2.2"/></filter></defs>
-<g clip-path="url(#clip)"><image id="tex" href="blood-texture.png" x="707" y="350" width="264" height="455" preserveAspectRatio="none" opacity=".66"/><rect id="tint" x="707" y="350" width="264" height="455" fill="url(#blood)" opacity=".42"/><ellipse id="surface" cx="839" cy="805" rx="128" ry="10" fill="#ff4657" opacity=".9" filter="url(#blur)"/></g>
-<!-- subtle glass sheen, always present -->
-<g opacity=".38"><rect x="721" y="360" width="18" height="430" rx="9" fill="#fff"/><rect x="918" y="360" width="11" height="425" rx="5.5" fill="#fff"/></g>
-</svg>
-<svg class="layer" viewBox="0 0 1672 941" xmlns="http://www.w3.org/2000/svg"><text id="sum" class="text sum" x="836" y="140" text-anchor="middle">0 ₽ / 10 000 ₽</text><text id="pct" class="text pct" x="1500" y="140" text-anchor="middle">0%</text></svg>
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1672,height=941,initial-scale=1">
+<title>Vampire Donation Widget</title>
+<style>
+html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hidden}
+#stage,.layer{position:absolute;left:0;top:0;width:1672px;height:941px}
+.text{font-family:Georgia,"Times New Roman",serif;font-weight:700;fill:#fff;paint-order:stroke;stroke:#1b0a0a;stroke-width:3px}
+.sum{font-size:34px}.pct{font-size:22px}
+</style>
+</head>
+<body>
+<div id="stage">
+  <!-- Наша ИДЕАЛЬНАЯ базовая картинка: геометрию не меняем -->
+  <img class="layer" src="altar.png" alt="">
+
+  <!-- Динамическая кровь в нижней колбе -->
+  <svg class="layer" viewBox="0 0 1672 941" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <clipPath id="clip"><rect x="707" y="350" width="264" height="455" rx="62"/></clipPath>
+      <linearGradient id="blood" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ff5864"/>
+        <stop offset=".18" stop-color="#ed1c35"/>
+        <stop offset=".6" stop-color="#a70018"/>
+        <stop offset="1" stop-color="#4d0009"/>
+      </linearGradient>
+      <filter id="blur"><feGaussianBlur stdDeviation="2.2"/></filter>
+    </defs>
+    <g clip-path="url(#clip)">
+      <image id="tex" href="blood-texture.png" x="707" y="350" width="264" height="455" preserveAspectRatio="none" opacity=".66"/>
+      <rect id="tint" x="707" y="350" width="264" height="455" fill="url(#blood)" opacity=".42"/>
+      <ellipse id="surface" cx="839" cy="805" rx="128" ry="10" fill="#ff4657" opacity=".9" filter="url(#blur)"/>
+    </g>
+    <g opacity=".38">
+      <rect x="721" y="360" width="18" height="430" rx="9" fill="#fff"/>
+      <rect x="918" y="360" width="11" height="425" rx="5.5" fill="#fff"/>
+    </g>
+  </svg>
+
+  <svg class="layer" viewBox="0 0 1672 941" xmlns="http://www.w3.org/2000/svg">
+    <text id="sum" class="text sum" x="836" y="140" text-anchor="middle">0 ₽ / 10 000 ₽</text>
+    <text id="pct" class="text pct" x="1500" y="140" text-anchor="middle">0%</text>
+  </svg>
 </div>
+
+<script src="config.js"></script>
 <script>
-const q=new URLSearchParams(location.search),clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-let current=Number(q.get('current')??localStorage.getItem('vampire_current')??4750),goal=Number(q.get('goal')??localStorage.getItem('vampire_goal')??10000);
-function setProgress(c,g){c=Number(c)||0;g=Number(g)||1;const p=clamp(c/g*100,0,100),bottom=805,full=455,top=Math.round(bottom-full*p/100),h=bottom-top;const t=document.getElementById('tex'),ti=document.getElementById('tint');t.setAttribute('y',top);t.setAttribute('height',Math.max(0,h));ti.setAttribute('y',top);ti.setAttribute('height',Math.max(0,h));document.getElementById('surface').setAttribute('cy',top);document.getElementById('sum').textContent=Math.round(c).toLocaleString('ru-RU')+' ₽ / '+Math.round(g).toLocaleString('ru-RU')+' ₽';document.getElementById('pct').textContent=Math.round(p)+'%';}
-window.setDonationProgress=setProgress;setProgress(current,goal);
-</script></body></html>
+(() => {
+  const API='https://www.donationalerts.com/api/v1';
+  const WS='wss://centrifugo.donationalerts.com/connection/websocket';
+  const CFG=window.VAMPIRE_CONFIG||{};
+  const q=new URLSearchParams(location.search);
+  const hash=new URLSearchParams(location.hash.replace(/^#/,'').replace(/^\?/,''));
+  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+  const num=(v,d=0)=>{const n=Number(v);return Number.isFinite(n)?n:d};
+
+  let current=num(q.get('current'),num(localStorage.getItem('vampire_current'),4750));
+  let goal=num(q.get('goal'),num(localStorage.getItem('vampire_goal'),10000));
+  let accessToken=hash.get('access_token')||localStorage.getItem('vampire_access_token')||'';
+  let socket=null;
+  let goalSyncSeen=false;
+  let reconnectDelay=1500;
+  let manualMode=true;
+
+  // Если токен пришел после OAuth — сохраняем его в браузере.
+  // Фрагмент не очищаем: такой URL можно сразу вставить в OBS.
+  if(hash.get('access_token')) localStorage.setItem('vampire_access_token',accessToken);
+
+  function currencySymbol(code){
+    return ({RUB:'₽',EUR:'€',USD:'$',GBP:'£',KZT:'₸',UAH:'₴',BYN:'Br'})[code]||'₽';
+  }
+
+  function render(c,g,symbol='₽'){
+    c=num(c); g=num(g,1); const p=clamp(c/g*100,0,100);
+    const bottom=805,full=455,top=Math.round(bottom-full*p/100),h=bottom-top;
+    const t=document.getElementById('tex'),ti=document.getElementById('tint');
+    t.setAttribute('y',top); t.setAttribute('height',Math.max(0,h));
+    ti.setAttribute('y',top); ti.setAttribute('height',Math.max(0,h));
+    document.getElementById('surface').setAttribute('cy',top);
+    document.getElementById('sum').textContent=Math.round(c).toLocaleString('ru-RU')+' '+symbol+' / '+Math.round(g).toLocaleString('ru-RU')+' '+symbol;
+    document.getElementById('pct').textContent=Math.round(p)+'%';
+    localStorage.setItem('vampire_current',String(c));
+    localStorage.setItem('vampire_goal',String(g));
+  }
+
+  window.setDonationProgress=(c,g)=>{current=num(c);goal=num(g,goal);render(current,goal,'₽');};
+  render(current,goal,'₽');
+
+  // Демо-режим по-прежнему работает, чтобы картинку можно было проверить без DA.
+  if(q.has('demo')){
+    const add=num(q.get('demo'),1000);
+    setTimeout(()=>window.setDonationProgress(current+add,goal),1000);
+  }
+
+  async function api(path,opts={}){
+    const r=await fetch(API+path,{...opts,headers:{...(opts.headers||{}),Authorization:'Bearer '+accessToken,'Content-Type':'application/json'}});
+    const text=await r.text();
+    let data={}; try{data=JSON.parse(text)}catch{}
+    if(!r.ok) throw new Error((data&&data.message)||('HTTP '+r.status));
+    return data;
+  }
+
+  async function subscribeChannels(client,channels){
+    const result=await api('/centrifuge/subscribe',{method:'POST',body:JSON.stringify({channels,client})});
+    return result.channels||[];
+  }
+
+  function extractPush(msg){
+    return msg&&msg.push&&msg.push.pub&&msg.push.pub.data || null;
+  }
+
+  function applyGoal(data){
+    const d=data&&data.data&&data.data.goal?data.data.goal:(data&&data.goal?data.goal:data);
+    const raised=num(d&&d.raised_amount,NaN), target=num(d&&d.goal_amount,NaN);
+    if(Number.isFinite(raised)&&Number.isFinite(target)&&target>0){
+      goalSyncSeen=true; current=raised; goal=target;
+      render(current,goal,currencySymbol(d.currency));
+    }
+  }
+
+  function applyDonation(data){
+    if(goalSyncSeen) return;
+    const d=data&&data.data&&data.data.donation?data.data.donation:(data&&data.donation?data.donation:data);
+    const amount=num(d&&d.amount,NaN);
+    if(Number.isFinite(amount)&&amount>0){current+=amount;render(current,goal,'₽');}
+  }
+
+  async function connectDonationAlerts(){
+    if(!accessToken) return;
+    manualMode=false;
+    try{
+      // 1) узнаём user_id и Centrifugo connection token.
+      const me=await api('/user/oauth');
+      const user=me.data||me;
+      if(!user||!user.id||!user.socket_connection_token) throw new Error('Не удалось получить данные DonationAlerts.');
+
+      socket=new WebSocket(WS);
+      socket.onopen=()=>{
+        socket.send(JSON.stringify({params:{token:user.socket_connection_token},id:1}));
+      };
+
+      socket.onmessage=async(event)=>{
+        let msg; try{msg=JSON.parse(event.data)}catch{return;}
+
+        // Ответ connect -> получаем Centrifugo client id.
+        if(msg.id===1 && msg.result && msg.result.client){
+          const channels=[`$goals:goal_${user.id}`,`$alerts:donation_${user.id}`];
+          try{
+            const creds=await subscribeChannels(msg.result.client,channels);
+            for(const c of creds){
+              if(!c.channel||!c.token) continue;
+              socket.send(JSON.stringify({method:'subscribe',params:{channel:c.channel,token:c.token},id:Math.floor(Math.random()*1000000)+2}));
+            }
+            document.title='Vampire Donation Widget — connected';
+          }catch(err){console.error('DonationAlerts subscribe:',err);}
+          return;
+        }
+
+        const data=extractPush(msg);
+        if(!data) return;
+        const channel=msg.push.channel||'';
+        if(channel.startsWith('$goals:goal_')) applyGoal(data);
+        else if(channel.startsWith('$alerts:donation_')) applyDonation(data);
+      };
+
+      socket.onclose=()=>{
+        const wait=reconnectDelay; reconnectDelay=Math.min(reconnectDelay*1.6,30000);
+        setTimeout(()=>connectDonationAlerts(),wait);
+      };
+      socket.onerror=(e)=>console.error('DonationAlerts WebSocket error',e);
+    }catch(err){
+      manualMode=true;
+      document.title='Vampire Donation Widget — auth error';
+      console.error('DonationAlerts connection error:',err);
+    }
+  }
+
+  // Автоматическое подключение после OAuth или при сохраненном токене.
+  if(accessToken) connectDonationAlerts();
+})();
+</script>
+</body>
+</html>
