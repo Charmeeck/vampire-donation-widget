@@ -13,10 +13,8 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
 </head>
 <body>
 <div id="stage">
-  <!-- Наша ИДЕАЛЬНАЯ базовая картинка: геометрию не меняем -->
   <img class="layer" src="altar.png" alt="">
 
-  <!-- Динамическая кровь в нижней колбе -->
   <svg class="layer" viewBox="0 0 1672 941" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <defs>
       <clipPath id="clip"><rect x="707" y="350" width="264" height="455" rx="62"/></clipPath>
@@ -48,162 +46,121 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
 <script src="config.js"></script>
 <script>
 (() => {
-  const API='https://www.donationalerts.com/api/v1';
-  const WS='wss://centrifugo.donationalerts.com/connection/websocket';
   const CFG=window.VAMPIRE_CONFIG||{};
   const q=new URLSearchParams(location.search);
-  const hash=new URLSearchParams(location.hash.replace(/^#/,'').replace(/^\?/,''));
+  const hash=new URLSearchParams(location.hash.replace(/^#/,'').replace(/^\?/,'').replace(/&+/g,'&'));
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
   const num=(v,d=0)=>{const n=Number(v);return Number.isFinite(n)?n:d};
 
-  const storedCurrent=num(localStorage.getItem('vampire_current'),NaN);
-  const storedGoal=num(localStorage.getItem('vampire_goal'),NaN);
-  let current=num(q.get('current'),(Number.isFinite(storedCurrent)&&storedCurrent>0)?storedCurrent:4750);
-  let goal=num(q.get('goal'),(Number.isFinite(storedGoal)&&storedGoal>0)?storedGoal:10000);
-  if(!Number.isFinite(current)||current<0) current=4750;
-  if(!Number.isFinite(goal)||goal<=0) goal=10000;
-  let accessToken=hash.get('access_token')||localStorage.getItem('vampire_access_token')||'';
-  let socket=null;
-  let goalSyncSeen=false;
-  let reconnectDelay=1500;
-  let manualMode=true;
-
-  // Если токен пришел после OAuth — сохраняем его в браузере.
-  // Фрагмент не очищаем: такой URL можно сразу вставить в OBS.
-  if(hash.get('access_token')) localStorage.setItem('vampire_access_token',accessToken);
-
-  function currencySymbol(code){
-    return ({RUB:'₽',EUR:'€',USD:'$',GBP:'£',KZT:'₸',UAH:'₴',BYN:'Br'})[code]||'₽';
+  if(hash.get('access_token')){
+    localStorage.setItem('vampire_access_token',hash.get('access_token'));
+    history.replaceState({},'',location.pathname+location.search);
   }
 
+  const storedCurrent=Number(localStorage.getItem('vampire_current'));
+  const storedGoal=Number(localStorage.getItem('vampire_goal'));
+  let current=num(q.get('current'),Number.isFinite(storedCurrent)&&storedCurrent>=0?storedCurrent:4750);
+  let goal=num(q.get('goal'),Number.isFinite(storedGoal)&&storedGoal>0?storedGoal:10000);
+  if(!Number.isFinite(current)||current<0) current=4750;
+  if(!Number.isFinite(goal)||goal<=0) goal=10000;
+
+  let accessToken=localStorage.getItem('vampire_access_token')||'';
+  let socket=null, goalSyncSeen=false, reconnectDelay=1500;
+
+  function currencySymbol(code){return ({RUB:'₽',EUR:'€',USD:'$',GBP:'£',KZT:'₸',UAH:'₴',BYN:'Br'})[code]||'₽';}
   function render(c,g,symbol='₽'){
-    c=num(c); g=num(g,1); const p=clamp(c/g*100,0,100);
-    const bottom=805,full=455,top=Math.round(bottom-full*p/100),h=bottom-top;
-    const t=document.getElementById('tex'),ti=document.getElementById('tint');
-    t.setAttribute('y',top); t.setAttribute('height',Math.max(0,h));
-    ti.setAttribute('y',top); ti.setAttribute('height',Math.max(0,h));
+    c=num(c);g=num(g,1);const p=clamp(c/g*100,0,100);
+    const bottom=805,full=455,top=Math.round(bottom-full*p/100),h=Math.max(0,bottom-top);
+    document.getElementById('tex').setAttribute('y',top);
+    document.getElementById('tex').setAttribute('height',h);
+    document.getElementById('tint').setAttribute('y',top);
+    document.getElementById('tint').setAttribute('height',h);
     document.getElementById('surface').setAttribute('cy',top);
     document.getElementById('sumCurrent').textContent=Math.round(c).toLocaleString('ru-RU')+' '+symbol;
     document.getElementById('sumGoal').textContent=Math.round(g).toLocaleString('ru-RU')+' '+symbol;
     localStorage.setItem('vampire_current',String(c));
     localStorage.setItem('vampire_goal',String(g));
   }
-
-  window.setDonationProgress=(c,g)=>{current=num(c);goal=num(g,goal);render(current,goal,'₽');};
   render(current,goal,'₽');
 
-  // Демо-режим по-прежнему работает, чтобы картинку можно было проверить без DA.
   if(q.has('demo')){
     const add=num(q.get('demo'),1000);
-    setTimeout(()=>window.setDonationProgress(current+add,goal),1000);
+    setTimeout(()=>render(current+add,goal,'₽'),700);
   }
 
+  const proxyFromStorage=localStorage.getItem('vampire_proxy_url')||'';
+  const proxy=(q.get('proxy')||proxyFromStorage||CFG.PROXY_URL||'').replace(/\/$/,'');
+  const API=proxy ? proxy+'/api/v1' : 'https://www.donationalerts.com/api/v1';
+  const WS='wss://centrifugo.donationalerts.com/connection/websocket';
+
   async function api(path,opts={}){
-    const r=await fetch(API+path,{...opts,headers:{...(opts.headers||{}),Authorization:'Bearer '+accessToken,'Content-Type':'application/json'}});
-    const text=await r.text();
-    let data={}; try{data=JSON.parse(text)}catch{}
-    if(!r.ok) throw new Error((data&&data.message)||('HTTP '+r.status));
+    const headers={...(opts.headers||{})};
+    headers.Authorization='Bearer '+accessToken;
+    if(opts.method==='POST') headers['Content-Type']='application/json';
+    const r=await fetch(API+path,{...opts,headers});
+    const tx=await r.text();let data={};try{data=JSON.parse(tx)}catch{}
+    if(!r.ok)throw new Error((data&&data.message)||('HTTP '+r.status));
     return data;
   }
 
   async function subscribeChannels(client,channels){
     const result=await api('/centrifuge/subscribe',{method:'POST',body:JSON.stringify({channels,client})});
-    return result.channels||[];
-  }
-
-  function extractPush(msg){
-    if(msg&&msg.push&&msg.push.pub) return msg.push.pub.data||msg.push.pub;
-    if(msg&&msg.result&&msg.result.data) return msg.result.data;
-    return null;
+    return Array.isArray(result.channels)?result.channels:[];
   }
 
   function resourceFromPush(data){
-    // DonationAlerts/Centrifugo может оборачивать ресурс как:
-    // { seq: ..., data: { ...resource } }
-    // или глубже { data: { goal: {...} } }.
     let d=data;
-    for(let i=0;i<4 && d;i++){
-      if(d.goal && typeof d.goal==='object') return d.goal;
-      if(d.donation && typeof d.donation==='object') return d.donation;
-      if(d.data && typeof d.data==='object'){ d=d.data; continue; }
+    for(let i=0;i<4&&d;i++){
+      if(d.goal&&typeof d.goal==='object')return d.goal;
+      if(d.donation&&typeof d.donation==='object')return d.donation;
+      if(d.data&&typeof d.data==='object'){d=d.data;continue;}
       break;
     }
     return d||{};
   }
-
   function applyGoal(data){
     const d=resourceFromPush(data);
-    const raised=num(d&&d.raised_amount,NaN), target=num(d&&d.goal_amount,NaN);
+    const raised=num(d.raised_amount,NaN),target=num(d.goal_amount,NaN);
     if(Number.isFinite(raised)&&Number.isFinite(target)&&target>0){
-      goalSyncSeen=true; current=raised; goal=target;
-      render(current,goal,currencySymbol(d.currency));
-      console.info('[Vampire] Goal synced:', raised, '/', target);
+      goalSyncSeen=true;current=raised;goal=target;render(current,goal,currencySymbol(d.currency));
     }
   }
-
   function applyDonation(data){
-    const d=resourceFromPush(data);
-    const amount=num(d&&d.amount,NaN);
-    if(Number.isFinite(amount)&&amount>0 && !goalSyncSeen){
-      current+=amount;
-      render(current,goal,currencySymbol(d.currency));
-      console.info('[Vampire] Donation:', amount, d.currency);
-    }
+    const d=resourceFromPush(data);const amount=num(d.amount,NaN);
+    if(Number.isFinite(amount)&&amount>0&&!goalSyncSeen){current+=amount;render(current,goal,currencySymbol(d.currency));}
   }
 
   async function connectDonationAlerts(){
-    if(!accessToken) return;
-    manualMode=false;
+    if(!accessToken||!proxy)return;
     try{
-      // 1) узнаём user_id и Centrifugo connection token.
-      const me=await api('/user/oauth');
-      const user=me.data||me;
-      if(!user||!user.id||!user.socket_connection_token) throw new Error('Не удалось получить данные DonationAlerts.');
-
+      const me=await api('/user/oauth');const user=me.data||me;
+      if(!user.id||!user.socket_connection_token)throw new Error('Не удалось получить данные DonationAlerts');
       socket=new WebSocket(WS);
-      socket.onopen=()=>{
-        socket.send(JSON.stringify({params:{token:user.socket_connection_token},id:1}));
-      };
-
-      socket.onmessage=async(event)=>{
-        let msg; try{msg=JSON.parse(event.data)}catch{return;}
-
-        // Ответ connect -> получаем Centrifugo client id.
-        if(msg.id===1 && msg.result && msg.result.client){
+      socket.onopen=()=>socket.send(JSON.stringify({params:{token:user.socket_connection_token},id:1}));
+      socket.onmessage=async event=>{
+        let msg;try{msg=JSON.parse(event.data)}catch{return;}
+        if(msg.id===1&&msg.result&&msg.result.client){
           const channels=[`$goals:goal_${user.id}`,`$alerts:donation_${user.id}`];
           try{
             const creds=await subscribeChannels(msg.result.client,channels);
-            for(const c of creds){
-              if(!c.channel||!c.token) continue;
-              socket.send(JSON.stringify({method:1,params:{channel:c.channel,token:c.token},id:Math.floor(Math.random()*1000000)+2}));
-            }
-            document.title='Vampire Donation Widget — connected';
-          }catch(err){console.error('DonationAlerts subscribe:',err);}
+            creds.forEach(c=>{if(c.channel&&c.token)socket.send(JSON.stringify({method:1,params:{channel:c.channel,token:c.token},id:Math.floor(Math.random()*900000)+10}));});
+          }catch(e){console.error('DA subscribe',e);}
           return;
         }
-
-        const data=extractPush(msg);
-        if(!data) return;
-        const channel=msg.push.channel||'';
-        if(channel.startsWith('$goals:goal_')) applyGoal(data);
-        else if(channel.startsWith('$alerts:donation_')) applyDonation(data);
+        if(msg.push){
+          const channel=msg.push.channel||'';const data=(msg.push.pub&&msg.push.pub.data)||msg.push.pub||{};
+          if(channel.startsWith('$goals:goal_'))applyGoal(data);
+          else if(channel.startsWith('$alerts:donation_'))applyDonation(data);
+        }
       };
-
-      socket.onclose=()=>{
-        const wait=reconnectDelay; reconnectDelay=Math.min(reconnectDelay*1.6,30000);
-        setTimeout(()=>connectDonationAlerts(),wait);
-      };
-      socket.onerror=(e)=>console.error('DonationAlerts WebSocket error',e);
-    }catch(err){
-      manualMode=true;
-      document.title='Vampire Donation Widget — auth error';
-      console.error('DonationAlerts connection error:',err);
-    }
+      socket.onclose=()=>{const wait=reconnectDelay;reconnectDelay=Math.min(reconnectDelay*1.6,30000);setTimeout(connectDonationAlerts,wait);};
+      socket.onerror=()=>{};
+    }catch(e){console.error('DonationAlerts connection',e);}
   }
 
-  // Автоматическое подключение после OAuth или при сохраненном токене.
-  if(accessToken) connectDonationAlerts();
+  // If proxy is not configured yet, the widget intentionally stays in manual/demo mode.
+  if(accessToken&&proxy)connectDonationAlerts();
 })();
 </script>
-\n<script>\n(() => {\n  const q=new URLSearchParams(location.search);\n  if(q.get('debug')!=='1') return;\n  const panel=document.createElement('div');\n  panel.id='debugPanel';\n  panel.style.cssText='position:fixed;left:16px;bottom:16px;width:520px;max-height:300px;overflow:auto;z-index:99999;background:rgba(10,10,14,.96);color:#fff;border:1px solid #666;border-radius:10px;padding:14px;font:13px/1.45 Arial,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.45)';\n  panel.innerHTML='<b style="color:#ff3344">🩸 Vampire Widget — диагностика</b><div id="dbg"></div>';\n  document.body.appendChild(panel);\n  const dbg=panel.querySelector('#dbg');\n  const line=(label,val,ok)=>{ const d=document.createElement('div'); d.style.marginTop='7px'; d.innerHTML='<b>'+label+':</b> <span style="color:'+(ok===true?'#6f6':ok===false?'#f66':'#ddd')+'">'+String(val).replace(/[<>]/g,'')+'</span>'; dbg.appendChild(d); return d; }\n  const token=localStorage.getItem('vampire_access_token')||'';\n  line('Токен', token?'найден в localStorage':'НЕ найден', !!token);\n  if(!token){ line('Результат','Сначала подключите DonationAlerts через setup.html',false); return; }\n  const API='https://www.donationalerts.com/api/v1';\n  const WS='wss://centrifugo.donationalerts.com/connection/websocket';\n  async function api(path,opts={}){\n    const r=await fetch(API+path,{...opts,headers:{...(opts.headers||{}),Authorization:'Bearer '+token,'Content-Type':'application/json'}});\n    const tx=await r.text(); let data={}; try{data=JSON.parse(tx)}catch{}\n    if(!r.ok) throw new Error((data&&data.message)||('HTTP '+r.status));\n    return data;\n  }\n  (async()=>{\n    let user;\n    try{ const me=await api('/user/oauth'); user=me.data||me; line('API /user/oauth', 'OK, user_id='+user.id, true); }\n    catch(e){ line('API /user/oauth', e.message, false); return; }\n    if(!user.socket_connection_token){ line('socket_connection_token','не получен',false); return; }\n    const ws=new WebSocket(WS);\n    const goalStatus=line('WebSocket','подключение…');\n    const subStatus=line('Подписки','ожидание…');\n    let connected=false;\n    ws.onopen=()=>{ goalStatus.innerHTML='<b>WebSocket:</b> <span style="color:#6f6">соединение открыто</span>'; ws.send(JSON.stringify({params:{token:user.socket_connection_token},id:1})); };\n    ws.onerror=()=>{ goalStatus.innerHTML='<b>WebSocket:</b> <span style="color:#f66">ошибка</span>'; };\n    ws.onclose=()=>{ if(!connected) goalStatus.innerHTML='<b>WebSocket:</b> <span style="color:#f66">соединение закрыто</span>'; };\n    ws.onmessage=async ev=>{\n      let msg; try{msg=JSON.parse(ev.data)}catch{return;}\n      if(msg.id===1 && msg.result && msg.result.client){\n        connected=true; line('Centrifugo client','получен',true);\n        const channels=[`$goals:goal_${user.id}`,`$alerts:donation_${user.id}`];\n        try{\n          const r=await api('/centrifuge/subscribe',{method:'POST',body:JSON.stringify({channels,client:msg.result.client})});\n          const creds=r.channels||[];\n          if(!Array.isArray(creds)){ subStatus.innerHTML='<b>Подписки:</b> <span style="color:#f66">неожиданный формат ответа</span>'; line('Ответ subscribe',JSON.stringify(r).slice(0,500),false); return; }\n          for(const c of creds){\n            if(c.channel && c.token){ ws.send(JSON.stringify({method:1,params:{channel:c.channel,token:c.token},id:Math.floor(Math.random()*1e6)+2})); }\n          }\n          subStatus.innerHTML='<b>Подписки:</b> <span style="color:#6f6">токены получены ('+creds.length+')</span>';\n          creds.forEach(c=>line('Канал',c.channel||'?',!!c.token));\n          line('Цель','ожидание события…');\n        }catch(e){ subStatus.innerHTML='<b>Подписки:</b> <span style="color:#f66">'+e.message.replace(/[<>]/g,'')+'</span>'; return; }\n        return;\n      }\n      if(msg.push){\n        const ch=msg.push.channel||'';\n        const data=(msg.push.pub&&msg.push.pub.data)||msg.push.pub||null;\n        line('Событие',ch+' → '+JSON.stringify(data).slice(0,350),true);\n        if(ch.startsWith('$goals:goal_')){\n          const d=(data&&data.data)||data||{};\n          line('GOAL raised_amount',d.raised_amount??'нет');\n          line('GOAL goal_amount',d.goal_amount??'нет');\n          if(Number.isFinite(Number(d.raised_amount))&&Number.isFinite(Number(d.goal_amount))) line('Результат','Цель получена. Виджет можно подключать к OBS.',true);\n        }\n      }\n    };\n  })();\n})();\n</script>\n</body>
+</body>
 </html>
