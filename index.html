@@ -32,38 +32,30 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
           0    0    0    1 0"/>
       </filter>
     </defs>
-    <!-- Symmetric gothic ornament inside the whole top bar. -->
-    <g id="topOrnament" transform="translate(0 0)" opacity="0.72" pointer-events="none">
-      <defs>
-        <linearGradient id="ornGlow" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stop-color="#7f0012"/>
-          <stop offset="0.5" stop-color="#fff0e6"/>
-          <stop offset="1" stop-color="#7f0012"/>
-        </linearGradient>
-        <filter id="ornSoft"><feGaussianBlur stdDeviation="0.7"/></filter>
-      </defs>
-      <g fill="none" stroke="url(#ornGlow)" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M160 169 C270 150 345 186 450 169 C550 152 615 181 690 169 C745 160 778 160 818 169" stroke-width="3"/>
-        <path d="M1544 169 C1434 150 1359 186 1254 169 C1154 152 1089 181 1014 169 C959 160 926 160 886 169" stroke-width="3"/>
-        <path d="M205 169 C255 145 295 145 330 169 C365 193 405 193 445 169" stroke-width="5"/>
-        <path d="M1467 169 C1417 145 1377 145 1342 169 C1307 193 1267 193 1227 169" stroke-width="5"/>
-        <path d="M338 169 C372 156 397 156 422 169 C447 182 475 182 504 169" stroke-width="3"/>
-        <path d="M1334 169 C1300 156 1275 156 1250 169 C1225 182 1197 182 1168 169" stroke-width="3"/>
-        <path d="M505 169 C560 148 611 148 666 169 C705 184 737 184 780 171" stroke-width="2.5"/>
-        <path d="M1167 169 C1112 148 1061 148 1006 169 C967 184 935 184 892 171" stroke-width="2.5"/>
+    <!-- Full red inner fill for the right half, matched to the existing bar contour. -->
+    <path d="M1010 126
+             C1130 126 1335 126 1460 126
+             C1494 126 1512 143 1512 169
+             L1512 177
+             C1512 204 1494 218 1460 218
+             L1010 218 Z"
+          fill="url(#barRed)" opacity="1"/>
+
+    <!-- Symmetric gothic ornament over the complete top bar. -->
+    <g id="topOrnament" opacity="0.8" pointer-events="none">
+      <g fill="none" stroke="#f0d7cf" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M165 172 C250 151 325 151 405 172 C485 193 555 193 635 172 C700 155 760 155 818 171"
+              stroke-width="2.5"/>
+        <path d="M1507 172 C1422 151 1347 151 1267 172 C1187 193 1117 193 1037 172 C972 155 912 155 854 171"
+              stroke-width="2.5"/>
       </g>
-      <g fill="#d9132c" stroke="#f5ece6" stroke-width="2">
-        <path d="M836 145 l13 13 -13 13 -13 -13z"/>
-        <path d="M640 157 l7 7 -7 7 -7 -7z"/>
-        <path d="M1032 157 l7 7 -7 7 -7 -7z"/>
-        <path d="M442 161 l5 5 -5 5 -5 -5z"/>
-        <path d="M1230 161 l5 5 -5 5 -5 -5z"/>
-        <path d="M275 164 l4 4 -4 4 -4 -4z"/>
-        <path d="M1397 164 l4 4 -4 4 -4 -4z"/>
-      </g>
-      <g fill="none" stroke="#ffffff" stroke-width="1.2" opacity="0.75" filter="url(#ornSoft)">
-        <path d="M170 172 C290 160 350 182 460 172 C560 163 620 178 690 172"/>
-        <path d="M1502 172 C1382 160 1322 182 1212 172 C1112 163 1052 178 982 172"/>
+      <g fill="#c8102e" stroke="#fff1eb" stroke-width="1.5">
+        <path d="M700 168 l7 7 -7 7 -7 -7z"/>
+        <path d="M972 168 l7 7 -7 7 -7 -7z"/>
+        <path d="M560 170 l5 5 -5 5 -5 -5z"/>
+        <path d="M1112 170 l5 5 -5 5 -5 -5z"/>
+        <path d="M420 171 l4 4 -4 4 -4 -4z"/>
+        <path d="M1252 171 l4 4 -4 4 -4 -4z"/>
       </g>
     </g>
     <g clip-path="url(#clip)">
