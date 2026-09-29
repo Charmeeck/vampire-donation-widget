@@ -50,7 +50,9 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
     history.replaceState({},'',location.pathname+location.search);
   }
 
-  let current=num(q.get('current'),num(localStorage.getItem('vampire_current'),100));
+  const START_AMOUNT=100;
+  const storedCurrent=num(localStorage.getItem('vampire_current'),START_AMOUNT);
+  let current=q.has('current')?num(q.get('current'),START_AMOUNT):(storedCurrent>0?storedCurrent:START_AMOUNT);
   let goal=num(q.get('goal'),num(localStorage.getItem('vampire_goal'),10000));
   if(current<0)current=0;
   if(goal<=0)goal=10000;
@@ -129,7 +131,11 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
     const raised=num(d.raised_amount,NaN);
     const target=num(d.goal_amount,NaN);
     if(Number.isFinite(raised)&&Number.isFinite(target)&&target>0){
-      current=raised;goal=target;render(current,goal,currencySymbol(d.currency));
+      // The user chose 100 RUB as the starting amount. Do not let a newly
+      // created DonationAlerts goal with 0 raised reset that starting value.
+      current=raised>0?raised:Math.max(current,START_AMOUNT);
+      goal=target;
+      render(current,goal,currencySymbol(d.currency));
     }
   }
 
