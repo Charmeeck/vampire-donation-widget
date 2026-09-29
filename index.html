@@ -117,20 +117,38 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
     return null;
   }
 
+  function resourceFromPush(data){
+    // DonationAlerts/Centrifugo может оборачивать ресурс как:
+    // { seq: ..., data: { ...resource } }
+    // или глубже { data: { goal: {...} } }.
+    let d=data;
+    for(let i=0;i<4 && d;i++){
+      if(d.goal && typeof d.goal==='object') return d.goal;
+      if(d.donation && typeof d.donation==='object') return d.donation;
+      if(d.data && typeof d.data==='object'){ d=d.data; continue; }
+      break;
+    }
+    return d||{};
+  }
+
   function applyGoal(data){
-    const d=data&&data.data&&data.data.goal?data.data.goal:(data&&data.goal?data.goal:data);
+    const d=resourceFromPush(data);
     const raised=num(d&&d.raised_amount,NaN), target=num(d&&d.goal_amount,NaN);
     if(Number.isFinite(raised)&&Number.isFinite(target)&&target>0){
       goalSyncSeen=true; current=raised; goal=target;
       render(current,goal,currencySymbol(d.currency));
+      console.info('[Vampire] Goal synced:', raised, '/', target);
     }
   }
 
   function applyDonation(data){
-    if(goalSyncSeen) return;
-    const d=data&&data.data&&data.data.donation?data.data.donation:(data&&data.donation?data.donation:data);
+    const d=resourceFromPush(data);
     const amount=num(d&&d.amount,NaN);
-    if(Number.isFinite(amount)&&amount>0){current+=amount;render(current,goal,currencySymbol(d.currency));}
+    if(Number.isFinite(amount)&&amount>0 && !goalSyncSeen){
+      current+=amount;
+      render(current,goal,currencySymbol(d.currency));
+      console.info('[Vampire] Donation:', amount, d.currency);
+    }
   }
 
   async function connectDonationAlerts(){
