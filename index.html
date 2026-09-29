@@ -8,7 +8,7 @@
 html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hidden}
 #stage,.layer{position:absolute;left:0;top:0;width:1672px;height:941px}
 .text{font-family:Georgia,"Times New Roman",serif;font-weight:700;fill:#fff;paint-order:stroke;stroke:#1b0a0a;stroke-width:3px}
-.sum{font-size:34px}.pct{font-size:22px}
+.sum{font-size:34px}.pct{font-size:20px}
 </style>
 </head>
 <body>
@@ -40,8 +40,8 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
   </svg>
 
   <svg class="layer" viewBox="0 0 1672 941" xmlns="http://www.w3.org/2000/svg">
-    <text id="sum" class="text sum" x="836" y="140" text-anchor="middle">0 ₽ / 10 000 ₽</text>
-    <text id="pct" class="text pct" x="1500" y="140" text-anchor="middle">0%</text>
+    <text id="sum" class="text sum" x="836" y="209" text-anchor="middle">0 ₽ / 10 000 ₽</text>
+    <text id="pct" class="text pct" x="1434" y="209" text-anchor="middle">0%</text>
   </svg>
 </div>
 
@@ -58,6 +58,8 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
 
   let current=num(q.get('current'),num(localStorage.getItem('vampire_current'),4750));
   let goal=num(q.get('goal'),num(localStorage.getItem('vampire_goal'),10000));
+  if(!Number.isFinite(current)||current<0) current=4750;
+  if(!Number.isFinite(goal)||goal<=0) goal=10000;
   let accessToken=hash.get('access_token')||localStorage.getItem('vampire_access_token')||'';
   let socket=null;
   let goalSyncSeen=false;

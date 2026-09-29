@@ -56,8 +56,8 @@ input{width:100%;padding:11px 12px;border:1px solid #555;border-radius:8px;backg
   const status = document.getElementById('status');
   const savedCurrent = localStorage.getItem('vampire_current');
   const savedGoal = localStorage.getItem('vampire_goal');
-  if (savedCurrent !== null) current.value = savedCurrent;
-  if (savedGoal !== null) goal.value = savedGoal;
+  if (savedCurrent !== null && Number(savedCurrent) >= 0) current.value = savedCurrent;
+  if (savedGoal !== null && Number(savedGoal) > 0) goal.value = savedGoal;
 
   document.getElementById('save').addEventListener('click', () => {
     const c = Number(current.value);
