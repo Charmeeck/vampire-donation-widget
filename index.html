@@ -24,14 +24,29 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
         <stop offset="0" stop-color="#ff5864"/><stop offset=".18" stop-color="#ed1c35"/><stop offset=".6" stop-color="#a70018"/><stop offset="1" stop-color="#4d0009"/>
       </linearGradient>
       <filter id="blur"><feGaussianBlur stdDeviation="2.2"/></filter>
+      <filter id="redBarTexture" color-interpolation-filters="sRGB">
+        <feColorMatrix type="matrix" values="
+          1.25 0.20 0.10 0 0.10
+          0.06 0.02 0.01 0 0.01
+          0.05 0.01 0.01 0 0.01
+          0    0    0    1 0"/>
+      </filter>
     </defs>
-    <!-- Paint the whole right chamber red, using the bar's own rounded contour. -->
+    <!-- Recolor the existing right chamber itself; no new pill/rectangle is drawn. -->
     <defs>
-      <clipPath id="topRightFill">
-        <rect x="1035" y="119" width="500" height="100" rx="48"/>
+      <clipPath id="topRightChamber">
+        <path d="M1110 164
+                 C1200 164 1375 164 1460 164
+                 C1493 164 1512 181 1512 198
+                 C1512 219 1492 234 1460 234
+                 L1130 234
+                 C1107 231 1095 216 1097 198
+                 C1098 181 1106 171 1110 164 Z"/>
       </clipPath>
     </defs>
-    <rect x="1035" y="119" width="500" height="100" rx="48" fill="url(#barRed)" opacity="0.98" clip-path="url(#topRightFill)"/>
+    <image href="altar.png" x="0" y="0" width="1672" height="941"
+           clip-path="url(#topRightChamber)" filter="url(#redBarTexture)"
+           opacity="1" pointer-events="none"/>
     <g clip-path="url(#clip)">
       <image id="tex" href="blood-texture.png" x="707" y="350" width="264" height="455" preserveAspectRatio="none" opacity=".66"/>
       <rect id="tint" x="707" y="350" width="264" height="455" fill="url(#blood)" opacity=".42"/>
