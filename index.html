@@ -32,21 +32,40 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
           0    0    0    1 0"/>
       </filter>
     </defs>
-    <!-- Recolor the existing right chamber itself; no new pill/rectangle is drawn. -->
-    <defs>
-      <clipPath id="topRightChamber">
-        <path d="M1110 164
-                 C1200 164 1375 164 1460 164
-                 C1493 164 1512 181 1512 198
-                 C1512 219 1492 234 1460 234
-                 L1130 234
-                 C1107 231 1095 216 1097 198
-                 C1098 181 1106 171 1110 164 Z"/>
-      </clipPath>
-    </defs>
-    <image href="altar.png" x="0" y="0" width="1672" height="941"
-           clip-path="url(#topRightChamber)" filter="url(#redBarTexture)"
-           opacity="1" pointer-events="none"/>
+    <!-- Symmetric gothic ornament inside the whole top bar. -->
+    <g id="topOrnament" transform="translate(0 0)" opacity="0.72" pointer-events="none">
+      <defs>
+        <linearGradient id="ornGlow" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#7f0012"/>
+          <stop offset="0.5" stop-color="#fff0e6"/>
+          <stop offset="1" stop-color="#7f0012"/>
+        </linearGradient>
+        <filter id="ornSoft"><feGaussianBlur stdDeviation="0.7"/></filter>
+      </defs>
+      <g fill="none" stroke="url(#ornGlow)" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M160 169 C270 150 345 186 450 169 C550 152 615 181 690 169 C745 160 778 160 818 169" stroke-width="3"/>
+        <path d="M1544 169 C1434 150 1359 186 1254 169 C1154 152 1089 181 1014 169 C959 160 926 160 886 169" stroke-width="3"/>
+        <path d="M205 169 C255 145 295 145 330 169 C365 193 405 193 445 169" stroke-width="5"/>
+        <path d="M1467 169 C1417 145 1377 145 1342 169 C1307 193 1267 193 1227 169" stroke-width="5"/>
+        <path d="M338 169 C372 156 397 156 422 169 C447 182 475 182 504 169" stroke-width="3"/>
+        <path d="M1334 169 C1300 156 1275 156 1250 169 C1225 182 1197 182 1168 169" stroke-width="3"/>
+        <path d="M505 169 C560 148 611 148 666 169 C705 184 737 184 780 171" stroke-width="2.5"/>
+        <path d="M1167 169 C1112 148 1061 148 1006 169 C967 184 935 184 892 171" stroke-width="2.5"/>
+      </g>
+      <g fill="#d9132c" stroke="#f5ece6" stroke-width="2">
+        <path d="M836 145 l13 13 -13 13 -13 -13z"/>
+        <path d="M640 157 l7 7 -7 7 -7 -7z"/>
+        <path d="M1032 157 l7 7 -7 7 -7 -7z"/>
+        <path d="M442 161 l5 5 -5 5 -5 -5z"/>
+        <path d="M1230 161 l5 5 -5 5 -5 -5z"/>
+        <path d="M275 164 l4 4 -4 4 -4 -4z"/>
+        <path d="M1397 164 l4 4 -4 4 -4 -4z"/>
+      </g>
+      <g fill="none" stroke="#ffffff" stroke-width="1.2" opacity="0.75" filter="url(#ornSoft)">
+        <path d="M170 172 C290 160 350 182 460 172 C560 163 620 178 690 172"/>
+        <path d="M1502 172 C1382 160 1322 182 1212 172 C1112 163 1052 178 982 172"/>
+      </g>
+    </g>
     <g clip-path="url(#clip)">
       <image id="tex" href="blood-texture.png" x="707" y="350" width="264" height="455" preserveAspectRatio="none" opacity=".66"/>
       <rect id="tint" x="707" y="350" width="264" height="455" fill="url(#blood)" opacity=".42"/>
