@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 110">
+<defs>
+  <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#8b0014"/>
+    <stop offset=".5" stop-color="#ff5a66"/>
+    <stop offset="1" stop-color="#8b0014"/>
+  </linearGradient>
+  <filter id="glow"><feGaussianBlur stdDeviation="1.4"/></filter>
+</defs>
+<g fill="none" stroke="url(#g)" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 54 C72 30 120 30 176 54 C232 78 286 78 338 54 C372 39 404 39 450 54"
+        stroke-width="4"/>
+  <path d="M888 54 C828 30 780 30 724 54 C668 78 614 78 562 54 C528 39 496 39 450 54"
+        stroke-width="4"/>
+  <path d="M44 54 C82 18 126 18 156 54 C186 90 230 90 270 54
+           C300 27 332 27 362 54"
+        stroke-width="5"/>
+  <path d="M856 54 C818 18 774 18 744 54 C714 90 670 90 630 54
+           C600 27 568 27 538 54"
+        stroke-width="5"/>
+  <path d="M250 54 C286 40 314 40 340 54 C366 68 392 68 418 54
+           C430 48 440 46 450 46"
+        stroke-width="2.5"/>
+  <path d="M650 54 C614 40 586 40 560 54 C534 68 508 68 482 54
+           C470 48 460 46 450 46"
+        stroke-width="2.5"/>
+  <path d="M18 58 C95 50 150 62 218 58 M882 58 C805 50 750 62 682 58"
+        stroke="#f6dfe0" stroke-width="1.2" opacity=".8" filter="url(#glow)"/>
+</g>
+<g fill="#c91430" stroke="#f6e8e4" stroke-width="2">
+  <path d="M450 40 l12 14 -12 14 -12 -14z"/>
+  <path d="M340 47 l8 8 -8 8 -8 -8z"/>
+  <path d="M560 47 l8 8 -8 8 -8 -8z"/>
+  <path d="M230 50 l6 6 -6 6 -6 -6z"/>
+  <path d="M670 50 l6 6 -6 6 -6 -6z"/>
+  <path d="M126 52 l5 5 -5 5 -5 -5z"/>
+  <path d="M774 52 l5 5 -5 5 -5 -5z"/>
+</g>
+<g fill="none" stroke="#ff3f55" stroke-width="2" opacity=".55">
+  <path d="M72 54 C104 44 126 44 150 54 C174 64 192 64 214 54"/>
+  <path d="M828 54 C796 44 774 44 750 54 C726 64 708 64 686 54"/>
+</g>
+</svg>
