@@ -1,8 +1,99 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=380,height=411,initial-scale=1"><title>Vampire Vial</title><style>html,body{margin:0;width:380px;height:411px;background:transparent;overflow:hidden}svg{display:block;width:380px;height:411px}.hud{position:absolute;left:-9999px}</style></head><body><svg viewBox="0 0 380 411" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="cavity"><rect x="108" y="52" width="164" height="248" rx="52"/></clipPath><linearGradient id="blood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff3040"/><stop offset=".42" stop-color="#c20f1f"/><stop offset="1" stop-color="#5a030a"/></linearGradient><filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/></filter></defs><g clip-path="url(#cavity)"><rect id="bloodGlow" x="108" y="300" width="164" height="0" fill="#ff2030" opacity=".28" filter="url(#glow)"/><rect id="blood" x="108" y="300" width="164" height="0" fill="url(#blood)"/><ellipse id="wave" cx="190" cy="300" rx="82" ry="9" fill="#e91b2d" opacity=".9"/></g><image href="vial-frame-clean.png" x="0" y="0" width="380" height="411" preserveAspectRatio="none"/><script src="config.js"></script><script>
-const params=new URLSearchParams(location.search);const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-function setProgress(current,goal){current=Number(current)||0;goal=Number(goal)||1;const pct=clamp(current/goal*100,0,100),bottom=300,top=bottom-248*pct/100,height=bottom-top;document.getElementById('blood').setAttribute('y',top);document.getElementById('blood').setAttribute('height',height);document.getElementById('bloodGlow').setAttribute('y',top-2);document.getElementById('bloodGlow').setAttribute('height',height+4);document.getElementById('wave').setAttribute('cy',top);}
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=380,height=411,initial-scale=1">
+<title>Vampire Vial</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}
+.scene{position:relative;width:380px;height:411px}
+svg{position:absolute;inset:0;width:380px;height:411px}
+</style>
+</head>
+<body>
+<div class="scene">
+<svg viewBox="0 0 380 411" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Точная форма внутренней полости колбы -->
+  <defs>
+    <clipPath id="cavity">
+      <rect x="108" y="52" width="164" height="248" rx="52"/>
+    </clipPath>
+
+    <linearGradient id="blood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff4352"/>
+      <stop offset=".42" stop-color="#d5001d"/>
+      <stop offset="1" stop-color="#72000d"/>
+    </linearGradient>
+
+    <radialGradient id="shine" cx=".3" cy=".2">
+      <stop offset="0" stop-color="#ffb0b0" stop-opacity=".42"/>
+      <stop offset=".45" stop-color="#ff3045" stop-opacity=".10"/>
+      <stop offset="1" stop-color="#ff0000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- КРОВЬ. Ничего за пределами clipPath физически не рисуется. -->
+  <g clip-path="url(#cavity)">
+    <rect id="blood" x="108" y="182.2" width="164" height="118"
+          fill="url(#blood)"/>
+
+    <ellipse id="wave" cx="190" cy="182.2" rx="82" ry="9"
+             fill="#ff5360"/>
+
+    <rect x="108" y="182.2" width="164" height="118"
+          fill="url(#shine)" opacity=".75"/>
+  </g>
+
+  <!-- Небольшие стеклянные блики внутри -->
+  <g clip-path="url(#cavity)" opacity=".16">
+    <rect x="116" y="55" width="14" height="240" rx="7" fill="white"/>
+    <rect x="250" y="55" width="10" height="240" rx="5" fill="white"/>
+  </g>
+
+  <!-- Металлическая рамка ПОВЕРХ крови -->
+  <image href="vial-frame-clean.png"
+         x="0" y="0" width="380" height="411"
+         preserveAspectRatio="none"/>
+</svg>
+</div>
+
+<script>
+const state={current:4750,goal:10000};
+
+function setProgress(current,goal=state.goal){
+  current=Number(current);
+  goal=Number(goal);
+  if(!Number.isFinite(current)||!Number.isFinite(goal)||goal<=0)return;
+
+  state.current=Math.max(0,current);
+  state.goal=goal;
+
+  const pct=Math.max(0,Math.min(100,state.current/state.goal*100));
+
+  // Верх жидкости: 300 = дно, 52 = верх.
+  const bottom=300;
+  const top=bottom-(248*pct/100);
+  const height=bottom-top;
+
+  document.getElementById("blood").setAttribute("y",top);
+  document.getElementById("blood").setAttribute("height",height);
+  document.getElementById("wave").setAttribute("cy",top);
+}
+
+const p=new URLSearchParams(location.search);
+
+if(p.has("current")) state.current=Number(p.get("current"))||state.current;
+if(p.has("goal")) state.goal=Number(p.get("goal"))||state.goal;
+
+setProgress(state.current,state.goal);
+
+if(p.has("demo")){
+  const add=Number(p.get("demo"))||1000;
+  setTimeout(()=>setProgress(state.current+add,state.goal),1000);
+}
+
 window.setDonationProgress=setProgress;
-let settings={current:Number(params.get('current')||0),goal:Number(params.get('goal')||10000)};try{const x=JSON.parse(localStorage.getItem('vampire_settings')||'{}');if(!params.has('current')&&x.current!=null)settings.current=Number(x.current);if(!params.has('goal')&&x.goal!=null)settings.goal=Number(x.goal)}catch{}if(params.has('demo'))settings.current+=Number(params.get('demo'))||0;setProgress(settings.current,settings.goal);
-async function connect(){const token=new URLSearchParams(location.hash.slice(1)).get('access_token')||localStorage.getItem('vampire_access_token');if(token){localStorage.setItem('vampire_access_token',token);if(location.hash)history.replaceState({},'',location.pathname+location.search)}else{const id=window.VAMPIRE_CONFIG&&window.VAMPIRE_CONFIG.CLIENT_ID;if(id&&!id.includes('PASTE_')){const q=new URLSearchParams({client_id:id,redirect_uri:window.VAMPIRE_CONFIG.REDIRECT_URI,response_type:'token',scope:'oauth-user-show oauth-goal-subscribe'});location.replace('https://www.donationalerts.com/oauth/authorize?'+q.toString())}return}
-try{const me=await fetch('https://www.donationalerts.com/api/v1/user/oauth',{headers:{Authorization:'Bearer '+token}}).then(r=>{if(!r.ok)throw Error('API '+r.status);return r.json()});const user=me.data;const ws=new WebSocket('wss://centrifugo.donationalerts.com/connection/websocket');ws.onopen=()=>ws.send(JSON.stringify({params:{token:user.socket_connection_token},id:1}));ws.onmessage=async ev=>{const msg=JSON.parse(ev.data);if(msg.id===1&&msg.result&&msg.result.client){const resp=await fetch('https://www.donationalerts.com/api/v1/centrifuge/subscribe',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({channels:['$goals:goal_'+user.id],client:msg.result.client})});const data=await resp.json();const sub=data.channels&&data.channels[0];if(sub)ws.send(JSON.stringify({params:{channel:sub.channel,token:sub.token},method:1,id:2}));}else if(msg.result&&msg.result.type===1&&msg.result.channel&&msg.result.channel.startsWith('$goals:goal_')){const d=msg.result.data&&msg.result.data.data?msg.result.data.data:msg.result.data;if(d&&d.goal_amount!=null&&d.raised_amount!=null)setProgress(d.raised_amount,d.goal_amount);}};ws.onerror=()=>{};ws.onclose=()=>setTimeout(connect,5000)}catch(e){setTimeout(connect,10000)}}connect();
-</script></svg></body></html>
+</script>
+</body>
+</html>
