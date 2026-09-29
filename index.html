@@ -50,7 +50,7 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
     history.replaceState({},'',location.pathname+location.search);
   }
 
-  const START_AMOUNT=100;
+  const START_AMOUNT=150;
   const storedCurrent=num(localStorage.getItem('vampire_current'),START_AMOUNT);
   let current=q.has('current')?num(q.get('current'),START_AMOUNT):(storedCurrent>0?storedCurrent:START_AMOUNT);
   let goal=num(q.get('goal'),num(localStorage.getItem('vampire_goal'),10000));
