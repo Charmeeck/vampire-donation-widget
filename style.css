@@ -1,228 +1,165 @@
-html,body{
-    margin:0;
-    width:100%;
-    height:100%;
-    overflow:hidden;
-    background:transparent;
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
 }
 
-body{
-    font-family:Georgia,"Times New Roman",serif;
+body {
+  font-family: Georgia, "Times New Roman", serif;
 }
 
-.widget{
-    position:relative;
-    width:100%;
-    height:100%;
-    overflow:hidden;
+.widget {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.art{
-    position:absolute;
-    inset:0;
-    width:100%;
-    height:100%;
-    object-fit:contain;
-    display:block;
+.art-frame {
+  position: relative;
+  width: min(100vw, calc(100vh * 1672 / 941));
+  height: min(100vh, calc(100vw * 941 / 1672));
+  aspect-ratio: 1672 / 941;
 }
 
-/* Динамическая часть донат-бара */
-.dynamic-bar{
-    position:absolute;
-    left:25.5%;
-    top:80.8%;
-    width:57%;
-    height:6.3%;
-    overflow:hidden;
-    border-radius:999px;
-    pointer-events:none;
+.art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
-.dynamic-fill{
-    position:absolute;
-    left:0;
-    top:7%;
-    height:86%;
-    width:37.5%;
-
-    background:
-        linear-gradient(
-            90deg,
-            #8b0008 0%,
-            #ff1b29 48%,
-            #a4000b 100%
-        );
-
-    box-shadow:
-        0 0 16px #ff1828,
-        inset 0 3px 6px #ff9b9f55;
-
-    border-radius:999px;
-
-    transition:
-        width 1.2s cubic-bezier(.18,.82,.2,1);
+/* Точная область внутренней части верхнего бара новой картинки */
+.dynamic-bar {
+  position: absolute;
+  left: 10.9%;
+  top: 16.7%;
+  width: 77.0%;
+  height: 8.0%;
+  overflow: hidden;
+  border-radius: 999px;
+  pointer-events: none;
+  box-sizing: border-box;
 }
 
-.bar-shine{
-    position:absolute;
-    inset:8% 0;
-    border-radius:999px;
-
-    background:
-        linear-gradient(
-            100deg,
-            transparent 0%,
-            rgba(255,255,255,.16) 46%,
-            transparent 55%
-        );
-
-    mix-blend-mode:screen;
+/* Затемняем статический участок картинки и поверх него рисуем динамический */
+.dynamic-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(12,8,12,.9), rgba(4,3,7,.96));
+  border-radius: inherit;
+  box-shadow: inset 0 0 10px rgba(0,0,0,.9);
 }
 
-.bar-text{
-    position:absolute;
-    inset:0;
-
-    display:flex;
-    align-items:center;
-    justify-content:center;
-
-    gap:8px;
-
-    color:#fff;
-
-    font-weight:700;
-
-    font-size:clamp(
-        15px,
-        2.1vw,
-        31px
-    );
-
-    text-shadow:
-        0 2px 5px #000,
-        0 0 9px #000;
-
-    letter-spacing:.5px;
+.dynamic-fill {
+  position: absolute;
+  left: 0;
+  top: 7%;
+  height: 86%;
+  width: 37.5%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 30% 45%, rgba(255,90,90,.7), transparent 25%),
+    linear-gradient(90deg, #8d0010, #ef1628 45%, #a40012 100%);
+  box-shadow:
+    0 0 10px rgba(255,20,35,.85),
+    0 0 24px rgba(160,0,20,.65),
+    inset 0 2px 5px rgba(255,180,180,.25);
+  transition: width 1.2s ease;
+  z-index: 2;
 }
 
-.sep{
-    opacity:.65;
+.bar-shine {
+  position: absolute;
+  inset: 8% 1.5%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,.22), transparent 45%);
+  pointer-events: none;
+  z-index: 3;
 }
 
-.percent{
-    position:absolute;
-
-    right:1.5%;
-    top:50%;
-
-    transform:translateY(-50%);
-
-    color:#fff;
-
-    font-size:clamp(
-        12px,
-        1.35vw,
-        20px
-    );
-
-    font-weight:700;
-
-    text-shadow:
-        0 2px 4px #000;
+.bar-text {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45em;
+  color: #fff4f4;
+  font-size: clamp(14px, 1.65vw, 29px);
+  font-weight: 700;
+  text-shadow:
+    0 2px 3px #000,
+    0 0 8px rgba(255,0,30,.75);
+  white-space: nowrap;
 }
 
-.flash{
-    position:absolute;
-    inset:0;
-
-    background:
-        radial-gradient(
-            circle at 50% 82%,
-            #ff182855,
-            transparent 30%
-        );
-
-    opacity:0;
-
-    pointer-events:none;
+.sep {
+  opacity: .8;
 }
 
-.flash.active{
-    animation:flash .65s ease-out;
+.percent {
+  position: absolute;
+  right: 1.5%;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  color: #fff;
+  font-size: clamp(10px, 1.05vw, 18px);
+  font-weight: 700;
+  text-shadow: 0 2px 3px #000;
 }
 
-@keyframes flash{
-    0%{
-        opacity:0;
-    }
-
-    15%{
-        opacity:1;
-    }
-
-    100%{
-        opacity:0;
-    }
+.flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255,0,30,.25), transparent 60%);
+  opacity: 0;
 }
 
-.donation{
-    position:absolute;
-
-    left:50%;
-    top:73%;
-
-    transform:translateX(-50%);
-
-    color:#fff;
-
-    font-weight:700;
-
-    font-size:clamp(
-        12px,
-        1.25vw,
-        19px
-    );
-
-    text-shadow:
-        0 2px 5px #000;
-
-    opacity:0;
-
-    white-space:nowrap;
-
-    pointer-events:none;
+.flash.active {
+  animation: flash .8s ease-out;
 }
 
-.donation.show{
-    animation:donation 2.8s ease-out;
+@keyframes flash {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
-@keyframes donation{
-
-    0%{
-        opacity:0;
-        transform:translate(-50%,10px);
-    }
-
-    15%,70%{
-        opacity:1;
-        transform:translate(-50%,0);
-    }
-
-    100%{
-        opacity:0;
-        transform:translate(-50%,-12px);
-    }
+.donation {
+  position: absolute;
+  left: 50%;
+  bottom: 5%;
+  transform: translate(-50%, 20px);
+  padding: 8px 16px;
+  border-radius: 12px;
+  color: #fff;
+  background: rgba(20,0,5,.88);
+  border: 1px solid rgba(255,50,60,.6);
+  box-shadow: 0 0 20px rgba(180,0,20,.45);
+  opacity: 0;
+  pointer-events: none;
+  font-size: clamp(14px, 1.4vw, 24px);
+  text-shadow: 0 2px 3px #000;
 }
 
-@media(max-width:900px){
+.donation.show {
+  animation: donation 3s ease-out;
+}
 
-    .dynamic-bar{
-        left:25%;
-        width:58%;
-        top:80.5%;
-        height:6.5%;
-    }
-
+@keyframes donation {
+  0% { opacity: 0; transform: translate(-50%, 20px); }
+  10%, 75% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -15px); }
 }

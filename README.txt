@@ -1,16 +1,14 @@
-КРОВАВЫЙ АЛТАРЬ — финальный визуальный прототип для OBS
+КРОВАВЫЙ АЛТАРЬ — новая версия
 
 Файлы:
+- altar.png — новая графика с верхним баром и резервуаром снизу
 - index.html
 - style.css
 - script.js
-- altar.png
 
 Тест:
-index.html?demo=500
+https://ВАШ_АДРЕС/?demo=1000
 
-Можно менять цель и стартовую сумму:
-index.html?goal=20000&current=5000&demo=1000
+Текущий тестовый прогресс: 3 750 / 10 000 ₽.
 
-Для реального сервиса:
-window.vampireDonation(500, "Имя")
+Для GitHub Pages замените старые altar.png, index.html, style.css и script.js на эти файлы.

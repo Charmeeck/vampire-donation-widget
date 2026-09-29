@@ -14,6 +14,7 @@ function render() {
 function donation(amount, name = "Донатер") {
   amount = Number(amount);
   if (!Number.isFinite(amount) || amount <= 0) return;
+
   state.current += amount;
   render();
 
@@ -28,10 +29,14 @@ function donation(amount, name = "Донатер") {
   d.classList.add("show");
 }
 
-// Для теста: index.html?demo=500
 const params = new URLSearchParams(location.search);
-if (params.has("goal")) state.goal = Number(params.get("goal")) || state.goal;
-if (params.has("current")) state.current = Number(params.get("current")) || state.current;
+
+if (params.has("goal")) {
+  state.goal = Number(params.get("goal")) || state.goal;
+}
+if (params.has("current")) {
+  state.current = Number(params.get("current")) || state.current;
+}
 
 render();
 
@@ -39,6 +44,4 @@ if (params.has("demo")) {
   setTimeout(() => donation(Number(params.get("demo")) || 500, "Тестовый донат"), 1000);
 }
 
-// Точка подключения реального сервиса донатов:
-// window.vampireDonation(amount, name)
 window.vampireDonation = donation;
