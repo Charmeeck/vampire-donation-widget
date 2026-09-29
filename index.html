@@ -8,7 +8,7 @@
 html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hidden}
 #stage,.layer{position:absolute;left:0;top:0;width:1672px;height:941px}
 .text{font-family:Georgia,"Times New Roman",serif;font-weight:700;fill:#fff;paint-order:stroke;stroke:#1b0a0a;stroke-width:3px}
-.sum{font-size:30px}
+.sum{font-size:36px}
 </style>
 </head>
 <body>
@@ -17,11 +17,17 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
   <svg class="layer" viewBox="0 0 1672 941" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <defs>
       <clipPath id="clip"><rect x="707" y="350" width="264" height="455" rx="62"/></clipPath>
+      <linearGradient id="barRed" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ff5864"/><stop offset=".18" stop-color="#ed1c35"/><stop offset=".6" stop-color="#a70018"/><stop offset="1" stop-color="#4d0009"/>
+      </linearGradient>
       <linearGradient id="blood" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#ff5864"/><stop offset=".18" stop-color="#ed1c35"/><stop offset=".6" stop-color="#a70018"/><stop offset="1" stop-color="#4d0009"/>
       </linearGradient>
       <filter id="blur"><feGaussianBlur stdDeviation="2.2"/></filter>
     </defs>
+    <!-- Fill the previously dark right half so the entire top bar is red. -->
+    <rect x="1088" y="124" width="430" height="91" rx="43" fill="url(#barRed)"/>
+    <rect x="1098" y="133" width="408" height="70" rx="34" fill="#b60019" opacity=".32"/>
     <g clip-path="url(#clip)">
       <image id="tex" href="blood-texture.png" x="707" y="350" width="264" height="455" preserveAspectRatio="none" opacity=".66"/>
       <rect id="tint" x="707" y="350" width="264" height="455" fill="url(#blood)" opacity=".42"/>
