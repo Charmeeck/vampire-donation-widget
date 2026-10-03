@@ -5,99 +5,178 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Vampire Widget — управление</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#09090b;color:#eee;font:15px Arial,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:#09090b;color:#eee;font:15px Arial,sans-serif}
 .box{width:min(760px,calc(100vw - 32px));margin:24px auto;background:#17171b;border:1px solid #555;border-radius:14px;padding:24px}
-h1{margin:0 0 8px;color:#e62b32;font-size:25px}
-p{color:#bbb;line-height:1.45}
+h1{margin:0 0 8px;color:#e62b32;font-size:25px}p{color:#bbb;line-height:1.45}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:20px 0}
 label{display:block;color:#bbb;margin-bottom:6px}
 input{width:100%;padding:12px;border:1px solid #555;border-radius:8px;background:#0e0e12;color:#fff;font-size:20px}
-.row{display:flex;gap:10px;flex-wrap:wrap}
 button{padding:12px 18px;border:0;border-radius:8px;background:#9b1420;color:#fff;font-weight:700;cursor:pointer}
-button.secondary{background:#2b2b31}
+.secondary{background:#2b2b31}.row{display:flex;gap:10px;flex-wrap:wrap}
 .status{margin-top:16px;padding:12px;background:#0e0e12;border-radius:8px}
-.ok{color:#70ee88}
-.hint{color:#888;font-size:13px;margin-top:10px}
-@media(max-width:560px){.grid{grid-template-columns:1fr}}
+.ok{color:#70ee88}.bad{color:#ff7c87}.hint{color:#888;font-size:13px;margin-top:10px}
+.link{word-break:break-all;color:#ff6b75}
 </style>
 </head>
 <body>
 <main class="box">
 <h1>🩸 Vampire Widget — управление</h1>
-<p>Эта страница нужна только для управления виджетом. Открой её через <b>«Взаимодействовать / Interact»</b> у отдельного Browser Source в OBS.</p>
+<p>Эта панель единственная подключается к DonationAlerts. Основной виджет получает состояние из общего Cloudflare KV.</p>
 
-<div class="grid">
-  <div>
-    <label for="current">Текущая сумма, ₽</label>
-    <input id="current" type="number" min="0" step="1">
+<div id="authBox">
+  <button id="connectDA">🔗 Подключить DonationAlerts</button>
+</div>
+
+<div id="controls" style="display:none">
+  <div class="grid">
+    <div><label for="current">Текущая сумма, ₽</label><input id="current" type="number" min="0" step="1"></div>
+    <div><label for="goal">Цель, ₽</label><input id="goal" type="number" min="1" step="1"></div>
   </div>
-  <div>
-    <label for="goal">Цель, ₽</label>
-    <input id="goal" type="number" min="1" step="1">
+  <div class="row">
+    <button id="save">💾 Сохранить</button>
+    <button id="add50" class="secondary">+50 ₽</button>
+    <button id="add100" class="secondary">+100 ₽</button>
+  </div>
+  <div class="status">
+    <b>🖥️ URL основного виджета:</b><br>
+    <a id="widgetLink" class="link" href="#" target="_blank"></a>
+    <div class="hint">Скопируй эту ссылку в Browser Source основного виджета. Она привязывает его к твоему аккаунту.</div>
   </div>
 </div>
 
-<div class="row">
-  <button id="save">💾 Сохранить и обновить виджет</button>
-  <button id="add50" class="secondary">+50 ₽</button>
-  <button id="add100" class="secondary">+100 ₽</button>
-</div>
+<div class="status" id="status">Нажми «Подключить DonationAlerts»</div>
 
-<div class="status" id="status">Готово.</div>
-<div class="hint">Настройки сохраняются в OBS. Основной виджет менять URL не нужно.</div>
-</main>
-
+<script src="config.js"></script>
 <script>
-(()=> {
-  const cur=document.getElementById('current');
-  const goal=document.getElementById('goal');
-  const status=document.getElementById('status');
-  const token=localStorage.getItem('vampire_access_token')||'';
+(()=>{
   const cfg=window.VAMPIRE_CONFIG||{};
+  const hash=new URLSearchParams(location.hash.replace(/^#/,''));
+  const hashToken=hash.get('access_token');
+  if(hashToken){
+    localStorage.setItem('vampire_access_token',hashToken);
+    history.replaceState({},'',location.pathname+location.search);
+  }
+
+  const token=localStorage.getItem('vampire_access_token')||'';
   const proxy=(localStorage.getItem('vampire_proxy_url')||cfg.PROXY_URL||'').replace(/\/$/,'');
   const API=proxy?proxy+'/api/v1':'';
+  const WS='wss://centrifugo.donationalerts.com/connection/websocket';
+
+  const cur=document.getElementById('current'),goal=document.getElementById('goal');
+  const status=document.getElementById('status'),authBox=document.getElementById('authBox'),controls=document.getElementById('controls');
+  const widgetLink=document.getElementById('widgetLink');
+
+  let accessToken=token,userId=null,socket=null,reconnectTimer=null;
 
   async function api(path,opts={}){
     const r=await fetch(API+path,{...opts,headers:{
       ...(opts.headers||{}),
-      Authorization:'Bearer '+token,
-      'Content-Type':'application/json'
+      Authorization:'Bearer '+accessToken
     }});
-    const tx=await r.text(); let data={}; try{data=JSON.parse(tx)}catch{}
-    if(!r.ok) throw new Error(data.message||data.error||('HTTP '+r.status));
+    const tx=await r.text();let data={};try{data=JSON.parse(tx)}catch{}
+    if(!r.ok)throw new Error(data.message||data.error||('HTTP '+r.status));
     return data;
   }
 
+  function authUrl(){
+    const u=new URL('https://www.donationalerts.com/oauth/authorize');
+    u.searchParams.set('client_id',String(cfg.CLIENT_ID||'21478'));
+    u.searchParams.set('redirect_uri',String(cfg.REDIRECT_URI||'https://charmeeck.github.io/vampire-donation-widget/'));
+    u.searchParams.set('response_type','token');
+    u.searchParams.set('scope','oauth-user-show oauth-donation-index oauth-donation-subscribe oauth-goal-subscribe');
+    u.searchParams.set('state','control');
+    u.searchParams.set('prompt','consent');
+    return u.toString();
+  }
+
+  async function saveState(c,g){
+    await api('/state',{method:'POST',body:JSON.stringify({current:c,goal:g})});
+    cur.value=c;goal.value=g;
+    status.innerHTML='<span class="ok">Сохранено: '+c.toLocaleString('ru-RU')+' ₽ / '+g.toLocaleString('ru-RU')+' ₽</span>';
+  }
+
+  function symbol(code){return ({RUB:'₽',EUR:'€',USD:'$',GBP:'£',KZT:'₸',UAH:'₴',BYN:'Br'})[code]||'₽';}
+  function payloadObject(v,depth=0){
+    if(!v||typeof v!=='object'||depth>8)return null;
+    if(Number.isFinite(Number(v.amount))&&v.currency)return {type:'donation',data:v};
+    if(Array.isArray(v)){for(const x of v){const r=payloadObject(x,depth+1);if(r)return r;}return null;}
+    for(const k of Object.keys(v)){const r=payloadObject(v[k],depth+1);if(r)return r;}
+    return null;
+  }
+
+  async function connectSocket(){
+    if(!accessToken||!userId)return;
+    socket=new WebSocket(WS);
+    socket.onopen=async()=>{try{
+      const me=await api('/user/oauth');
+      const u=me.data||me;
+      socket.send(JSON.stringify({params:{token:u.socket_connection_token},id:1}));
+    }catch(e){status.innerHTML='<span class="bad">'+e.message+'</span>'}};
+    socket.onmessage=async(ev)=>{
+      let msg;try{msg=JSON.parse(ev.data)}catch{return}
+      if(msg.id===1&&msg.result&&msg.result.client){
+        try{
+          const sub=await api('/centrifuge/subscribe',{method:'POST',body:JSON.stringify({
+            channels:['$alerts:donation_'+userId,'$goals:goal_'+userId],
+            client:msg.result.client
+          })});
+          (sub.channels||[]).forEach((c,i)=>{
+            if(c.channel&&c.token)socket.send(JSON.stringify({method:1,params:{channel:c.channel,token:c.token},id:100+i}));
+          });
+        }catch(e){status.innerHTML='<span class="bad">'+e.message+'</span>'}
+        return;
+      }
+      if(msg.push){
+        const ch=msg.push.channel||'';
+        const data=msg.push.pub&&msg.push.pub.data!==undefined?msg.push.pub.data:(msg.push.pub||{});
+        if(ch.indexOf('$goals:goal_')===0){
+          const d=payloadObject(data);
+          if(d&&d.data){const g=Number(d.data.goal_amount),r=Number(d.data.raised_amount);if(Number.isFinite(g)&&g>0&&Number.isFinite(r)){await saveState(r,g).catch(()=>{})}}
+        }else if(ch.indexOf('$alerts:donation_')===0){
+          const d=payloadObject(data);
+          if(d&&d.data){const amount=Number(d.data.amount_in_user_currency??d.data.amount);if(Number.isFinite(amount)&&amount>0){
+            const c=Number(cur.value)||0,g=Number(goal.value)||10000;await saveState(c+amount,g).catch(()=>{})
+          }}
+        }
+      }
+    };
+    socket.onerror=()=>status.innerHTML='<span class="bad">WebSocket ошибка</span>';
+    socket.onclose=()=>{reconnectTimer=setTimeout(connectSocket,5000)};
+  }
+
   async function load(){
-    if(!token){status.textContent='Нет авторизации. Сначала подключите DonationAlerts.';return;}
     try{
-      const s=await api('/state');
-      cur.value=Number.isFinite(Number(s.current))?Number(s.current):0;
-      goal.value=Number.isFinite(Number(s.goal))&&Number(s.goal)>0?Number(s.goal):10000;
-      status.innerHTML='<span class="ok">Подключено. Общие настройки загружены.</span>';
+      if(!accessToken)throw new Error('Авторизация не найдена');
+      const me=await api('/user/oauth');
+      const u=me.data||me;
+      userId=u.id;
+      const st=await api('/state').catch(()=>({}));
+      cur.value=Number.isFinite(Number(st.current))?Number(st.current):0;
+      goal.value=Number.isFinite(Number(st.goal))&&Number(st.goal)>0?Number(st.goal):10000;
+      const url=new URL(cfg.REDIRECT_URI||'https://charmeeck.github.io/vampire-donation-widget/');
+      url.search='?uid='+encodeURIComponent(userId);
+      url.hash='';
+      widgetLink.href=url.toString();
+      widgetLink.textContent=url.toString();
+      authBox.style.display='none';
+      controls.style.display='block';
+      status.innerHTML='<span class="ok">DonationAlerts подключён. Состояние общее.</span>';
+      connectSocket();
     }catch(e){
       status.innerHTML='<span class="bad">'+e.message+'</span>';
+      authBox.style.display='block';
+      controls.style.display='none';
     }
   }
 
-  async function save(){
-    try{
-      const c=Math.max(0,Number(cur.value)||0);
-      const g=Math.max(1,Number(goal.value)||10000);
-      await api('/state',{method:'POST',body:JSON.stringify({current:c,goal:g})});
-      status.innerHTML='<span class="ok">Сохранено: '+c.toLocaleString('ru-RU')+' ₽ / '+g.toLocaleString('ru-RU')+' ₽</span>';
-    }catch(e){
-      status.innerHTML='<span class="bad">'+e.message+'</span>';
-    }
-  }
-
-  document.getElementById('save').onclick=save;
-  document.getElementById('add50').onclick=()=>{cur.value=(Number(cur.value)||0)+50;save();};
-  document.getElementById('add100').onclick=()=>{cur.value=(Number(cur.value)||0)+100;save();};
+  document.getElementById('connectDA').onclick=()=>location.href=authUrl();
+  document.getElementById('save').onclick=()=>saveState(Math.max(0,Number(cur.value)||0),Math.max(1,Number(goal.value)||10000));
+  document.getElementById('add50').onclick=()=>{cur.value=(Number(cur.value)||0)+50;document.getElementById('save').click()};
+  document.getElementById('add100').onclick=()=>{cur.value=(Number(cur.value)||0)+100;document.getElementById('save').click()};
 
   load();
 })();
 </script>
+</main>
 </body>
 </html>
