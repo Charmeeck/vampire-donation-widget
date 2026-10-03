@@ -118,6 +118,23 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
 
   render(current,goal,'₽');
 
+  // Receive manual changes from the separate OBS control panel.
+  try{
+    const controlChannel=new BroadcastChannel('vampire-widget-control');
+    controlChannel.onmessage=(event)=>{
+      const data=event.data||{};
+      if(data.type!=='settings')return;
+      const c=num(data.current,current);
+      const g=num(data.goal,goal);
+      if(c<0||g<=0)return;
+      current=c;
+      goal=g;
+      render(current,goal,'₽');
+    };
+  }catch(e){}
+
+
+
   async function api(path,opts={}){
     if(!API)throw new Error('Worker proxy не настроен');
     const headers={...(opts.headers||{}),Authorization:'Bearer '+accessToken};
