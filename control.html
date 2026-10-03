@@ -49,42 +49,54 @@ button.secondary{background:#2b2b31}
 </main>
 
 <script>
-(()=>{
-  const current=document.getElementById('current');
+(()=> {
+  const cur=document.getElementById('current');
   const goal=document.getElementById('goal');
   const status=document.getElementById('status');
+  const token=localStorage.getItem('vampire_access_token')||'';
+  const cfg=window.VAMPIRE_CONFIG||{};
+  const proxy=(localStorage.getItem('vampire_proxy_url')||cfg.PROXY_URL||'').replace(/\/$/,'');
+  const API=proxy?proxy+'/api/v1':'';
 
-  const n=(v,d)=>{const x=Number(v);return Number.isFinite(x)?x:d};
-  const initialCurrent=Math.max(0,n(localStorage.getItem('vampire_current'),0));
-  const initialGoal=Math.max(1,n(localStorage.getItem('vampire_goal'),10000));
-  current.value=initialCurrent;
-  goal.value=initialGoal;
-
-  let channel;
-  try{channel=new BroadcastChannel('vampire-widget-control')}catch(e){channel=null}
-
-  function publish(){
-    const c=Math.max(0,n(current.value,0));
-    const g=Math.max(1,n(goal.value,10000));
-    current.value=c;
-    goal.value=g;
-    localStorage.setItem('vampire_current',String(c));
-    localStorage.setItem('vampire_goal',String(g));
-    if(channel)channel.postMessage({type:'settings',current:c,goal:g});
-    status.innerHTML='<span class="ok">Сохранено: '+c.toLocaleString('ru-RU')+' ₽ / '+g.toLocaleString('ru-RU')+' ₽</span>';
+  async function api(path,opts={}){
+    const r=await fetch(API+path,{...opts,headers:{
+      ...(opts.headers||{}),
+      Authorization:'Bearer '+token,
+      'Content-Type':'application/json'
+    }});
+    const tx=await r.text(); let data={}; try{data=JSON.parse(tx)}catch{}
+    if(!r.ok) throw new Error(data.message||data.error||('HTTP '+r.status));
+    return data;
   }
 
-  document.getElementById('save').onclick=publish;
+  async function load(){
+    if(!token){status.textContent='Нет авторизации. Сначала подключите DonationAlerts.';return;}
+    try{
+      const s=await api('/state');
+      cur.value=Number.isFinite(Number(s.current))?Number(s.current):0;
+      goal.value=Number.isFinite(Number(s.goal))&&Number(s.goal)>0?Number(s.goal):10000;
+      status.innerHTML='<span class="ok">Подключено. Общие настройки загружены.</span>';
+    }catch(e){
+      status.innerHTML='<span class="bad">'+e.message+'</span>';
+    }
+  }
 
-  document.getElementById('add50').onclick=()=>{
-    current.value=Math.max(0,n(current.value,0)+50);
-    publish();
-  };
+  async function save(){
+    try{
+      const c=Math.max(0,Number(cur.value)||0);
+      const g=Math.max(1,Number(goal.value)||10000);
+      await api('/state',{method:'POST',body:JSON.stringify({current:c,goal:g})});
+      status.innerHTML='<span class="ok">Сохранено: '+c.toLocaleString('ru-RU')+' ₽ / '+g.toLocaleString('ru-RU')+' ₽</span>';
+    }catch(e){
+      status.innerHTML='<span class="bad">'+e.message+'</span>';
+    }
+  }
 
-  document.getElementById('add100').onclick=()=>{
-    current.value=Math.max(0,n(current.value,0)+100);
-    publish();
-  };
+  document.getElementById('save').onclick=save;
+  document.getElementById('add50').onclick=()=>{cur.value=(Number(cur.value)||0)+50;save();};
+  document.getElementById('add100').onclick=()=>{cur.value=(Number(cur.value)||0)+100;save();};
+
+  load();
 })();
 </script>
 </body>
