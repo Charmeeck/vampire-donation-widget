@@ -78,7 +78,7 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
   if(token){
     localStorage.setItem('vampire_access_token',token);
     if(oauthState==='control'){
-      location.replace('./control.html');
+      location.replace('./control.html#access_token='+encodeURIComponent(token));
       return;
     }
     history.replaceState({},'',location.pathname+location.search);
@@ -90,6 +90,22 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
   let goal=num(q.get('goal'),num(localStorage.getItem('vampire_goal'),10000));
   if(current<0)current=0;
   if(goal<=0)goal=10000;
+
+  const publicUid=q.get('uid');
+  async function loadPublicState(){
+    if(!publicUid||!proxy)return;
+    try{
+      const r=await fetch(proxy+'/public-state?uid='+encodeURIComponent(publicUid));
+      if(!r.ok)return;
+      const s=await r.json();
+      const c=Number(s.current),g=Number(s.goal);
+      if(Number.isFinite(c)&&c>=0&&Number.isFinite(g)&&g>0){
+        if(Math.abs(c-current)>0.001||Math.abs(g-goal)>0.001){
+          current=c;goal=g;render(current,goal,'₽');
+        }
+      }
+    }catch(e){}
+  }
 
   const accessToken=localStorage.getItem('vampire_access_token')||'';
   const proxy=(localStorage.getItem('vampire_proxy_url')||CFG.PROXY_URL||'').replace(/\/$/,'');
@@ -332,7 +348,10 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
     }
   }
 
-  if(accessToken&&API){
+  if(publicUid&&API){
+    loadPublicState();
+    setInterval(loadPublicState,3000);
+  } else if(accessToken&&API){
     getRemoteState().then(state=>{
       if(state){
         current=state.current;
@@ -342,21 +361,8 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
         setRemoteState(current,goal);
       }
     });
-
     syncHistory();
     setInterval(syncHistory,5000);
-
-    // Poll shared state so a separate OBS control source can update this widget.
-    setInterval(async()=>{
-      const state=await getRemoteState();
-      if(!state)return;
-      if(Math.abs(state.current-current)>0.001 || Math.abs(state.goal-goal)>0.001){
-        current=state.current;
-        goal=state.goal;
-        render(current,goal,'₽');
-      }
-    },5000);
-
     connect();
   }
 })();
