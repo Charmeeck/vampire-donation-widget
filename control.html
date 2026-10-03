@@ -67,6 +67,8 @@ button{padding:12px 18px;border:0;border-radius:8px;background:#9b1420;color:#ff
   const widgetLink=document.getElementById('widgetLink');
 
   let accessToken=token,userId=null,socket=null,reconnectTimer=null;
+  let seenDonations=new Set((localStorage.getItem('vampire_seen_donations_control')||'').split(',').filter(Boolean));
+  let historyReady=localStorage.getItem('vampire_history_control_ready')==='1';
 
   async function api(path,opts={}){
     const r=await fetch(API+path,{...opts,headers:{
@@ -104,6 +106,50 @@ button{padding:12px 18px;border:0;border-radius:8px;background:#9b1420;color:#ff
     return null;
   }
 
+  function rememberDonation(id){
+    if(id===undefined||id===null)return;
+    seenDonations.add(String(id));
+    localStorage.setItem('vampire_seen_donations_control',[...seenDonations].slice(-500).join(','));
+  }
+
+  async function syncDonationHistory(){
+    if(!accessToken||!API)return;
+    try{
+      const result=await api('/alerts/donations?page=1');
+      const list=Array.isArray(result.data)?result.data:[];
+      if(!list.length)return;
+
+      // Establish a baseline on the first run so old donations are not added again.
+      if(!historyReady){
+        list.forEach(d=>{
+          if(d&&d.id!==undefined&&d.id!==null)rememberDonation(d.id);
+        });
+        historyReady=true;
+        localStorage.setItem('vampire_history_control_ready','1');
+        return;
+      }
+
+      // Add only donations not seen by this control panel.
+      for(const d of list){
+        if(!d||d.id===undefined||d.id===null)continue;
+        if(seenDonations.has(String(d.id)))continue;
+
+        const amount=Number(d.amount_in_user_currency??d.amount);
+        if(!Number.isFinite(amount)||amount<=0)continue;
+
+        const c=Math.max(0,Number(cur.value)||0);
+        const g=Math.max(1,Number(goal.value)||10000);
+
+        rememberDonation(d.id);
+        await saveState(c+amount,g);
+      }
+
+      status.innerHTML='<span class="ok">DonationAlerts: история проверена.</span>';
+    }catch(e){
+      console.warn('Donation history sync failed:',e);
+    }
+  }
+
   async function connectSocket(){
     if(!accessToken||!userId)return;
     socket=new WebSocket(WS);
@@ -134,9 +180,13 @@ button{padding:12px 18px;border:0;border-radius:8px;background:#9b1420;color:#ff
           if(d&&d.data){const g=Number(d.data.goal_amount),r=Number(d.data.raised_amount);if(Number.isFinite(g)&&g>0&&Number.isFinite(r)){await saveState(r,g).catch(()=>{})}}
         }else if(ch.indexOf('$alerts:donation_')===0){
           const d=payloadObject(data);
-          if(d&&d.data){const amount=Number(d.data.amount_in_user_currency??d.data.amount);if(Number.isFinite(amount)&&amount>0){
-            const c=Number(cur.value)||0,g=Number(goal.value)||10000;await saveState(c+amount,g).catch(()=>{})
-          }}
+          if(d&&d.data){const amount=Number(d.data.amount_in_user_currency??d.data.amount);const id=d.data.id;
+            if(Number.isFinite(amount)&&amount>0&&!(id!==undefined&&id!==null&&seenDonations.has(String(id)))){
+              rememberDonation(id);
+              const c=Number(cur.value)||0,g=Number(goal.value)||10000;
+              await saveState(c+amount,g).catch(()=>{})
+            }
+          }
         }
       }
     };
@@ -161,6 +211,8 @@ button{padding:12px 18px;border:0;border-radius:8px;background:#9b1420;color:#ff
       authBox.style.display='none';
       controls.style.display='block';
       status.innerHTML='<span class="ok">DonationAlerts подключён. Состояние общее.</span>';
+      syncDonationHistory();
+      setInterval(syncDonationHistory,3000);
       connectSocket();
     }catch(e){
       status.innerHTML='<span class="bad">'+e.message+'</span>';
