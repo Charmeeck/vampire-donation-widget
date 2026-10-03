@@ -131,7 +131,19 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
       goal=g;
       render(current,goal,'₽');
     };
-  }catch(e){}
+  }catch(e){}  }catch(e){}
+  // Fallback communication for OBS/browser contexts that do not share BroadcastChannel.
+  window.addEventListener('storage',(event)=>{
+    if(event.key!=='vampire_current' && event.key!=='vampire_goal')return;
+    const c=num(localStorage.getItem('vampire_current'),current);
+    const g=num(localStorage.getItem('vampire_goal'),goal);
+    if(c<0||g<=0)return;
+    current=c;
+    goal=g;
+    render(current,goal,'₽');
+  });
+
+
 
 
 
