@@ -54,6 +54,21 @@ export default {
       });
     }
 
+    // Public read-only state for the main widget. The streamer ID is public,
+    // while writes remain protected by DonationAlerts OAuth.
+    if (url.pathname === "/public-state") {
+      if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, origin);
+      if (!env.VAMPIRE_KV) return json({ error: "VAMPIRE_KV binding is not configured" }, 503, origin);
+      const uid = url.searchParams.get("uid") || "";
+      if (!/^\\d+$/.test(uid)) return json({ error: "Invalid uid" }, 400, origin);
+      try {
+        const value = await env.VAMPIRE_KV.get("state:" + uid, "json");
+        return json(value || {}, 200, origin);
+      } catch (e) {
+        return json({ error: e.message || "Public state error" }, 500, origin);
+      }
+    }
+
     // Shared state between separate OBS Browser Sources.
     if (url.pathname === "/state" || url.pathname === "/api/v1/state") {
       if (!env.VAMPIRE_KV) {
