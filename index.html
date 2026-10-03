@@ -65,306 +65,101 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
 </div>
 <script src="config.js"></script>
 <script>
-(()=> {
+(()=>{
   const CFG=window.VAMPIRE_CONFIG||{};
   const q=new URLSearchParams(location.search);
-  const hash=new URLSearchParams(location.hash.replace(/^#/,'').replace(/^\?/,''));
-  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+  const hash=new URLSearchParams(location.hash.replace(/^#/,'').replace(/^\?/,''));  
   const num=(v,d=0)=>{const n=Number(v);return Number.isFinite(n)?n:d};
+  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 
-  // OAuth implicit callback. The control panel uses state=control.
+  // OAuth callback for the legacy/setup flow.
   const token=hash.get('access_token');
-  const oauthState=hash.get('state')||'';
+  const state=hash.get('state')||'';
   if(token){
     localStorage.setItem('vampire_access_token',token);
-    if(oauthState==='control'){
-      location.replace('./control.html#access_token='+encodeURIComponent(token));
+    if(state==='control'){
+      location.replace('./control.html');
       return;
     }
     history.replaceState({},'',location.pathname+location.search);
   }
 
-  const START_AMOUNT=0;
-  const storedCurrent=num(localStorage.getItem('vampire_current'),START_AMOUNT);
-  let current=q.has('current')?num(q.get('current'),START_AMOUNT):(storedCurrent>0?storedCurrent:START_AMOUNT);
-  let goal=num(q.get('goal'),num(localStorage.getItem('vampire_goal'),10000));
-  if(current<0)current=0;
-  if(goal<=0)goal=10000;
-
-  const publicUid=q.get('uid');
-  async function loadPublicState(){
-    if(!publicUid||!proxy)return;
-    try{
-      const r=await fetch(proxy+'/public-state?uid='+encodeURIComponent(publicUid));
-      if(!r.ok)return;
-      const s=await r.json();
-      const c=Number(s.current),g=Number(s.goal);
-      if(Number.isFinite(c)&&c>=0&&Number.isFinite(g)&&g>0){
-        if(Math.abs(c-current)>0.001||Math.abs(g-goal)>0.001){
-          current=c;goal=g;render(current,goal,'₽');
-        }
-      }
-    }catch(e){}
-  }
-
-  const accessToken=localStorage.getItem('vampire_access_token')||'';
   const proxy=(localStorage.getItem('vampire_proxy_url')||CFG.PROXY_URL||'').replace(/\/$/,'');
   const API=proxy?proxy+'/api/v1':'';
-  const WS='wss://centrifugo.donationalerts.com/connection/websocket';
+  const publicUid=q.get('uid');
 
-  let socket=null,reconnectTimer=null;
-  const seen=new Set((localStorage.getItem('vampire_seen_donations')||'').split(',').filter(Boolean));
-
-  function currencySymbol(code){
-    return ({RUB:'₽',EUR:'€',USD:'$',GBP:'£',KZT:'₸',UAH:'₴',BYN:'Br',BRL:'R$',TRY:'₺'})[code]||'₽';
-  }
+  let current=num(q.get('current'),num(localStorage.getItem('vampire_current'),0));
+  let goal=num(q.get('goal'),num(localStorage.getItem('vampire_goal'),10000));
 
   function render(c,g,symbol='₽'){
     c=num(c);g=num(g,1);
     const p=clamp(c/g*100,0,100);
-    const bottom=805,full=455;
-    const top=Math.round(bottom-full*p/100);
+    const bottom=805,full=455,top=Math.round(bottom-full*p/100);
     const height=Math.max(0,bottom-top);
+
     const tex=document.getElementById('tex');
     const tint=document.getElementById('tint');
     const surface=document.getElementById('surface');
     if(tex){tex.setAttribute('y',top);tex.setAttribute('height',height);}
     if(tint){tint.setAttribute('y',top);tint.setAttribute('height',height);}
     if(surface)surface.setAttribute('cy',top);
+
     document.getElementById('sumCurrent').textContent=Math.round(c).toLocaleString('ru-RU')+' '+symbol;
     document.getElementById('sumGoal').textContent=Math.round(g).toLocaleString('ru-RU')+' '+symbol;
+
     localStorage.setItem('vampire_current',String(c));
     localStorage.setItem('vampire_goal',String(g));
   }
 
   render(current,goal,'₽');
 
-  // Receive manual changes from the separate OBS control panel.
-  try{
-    const controlChannel=new BroadcastChannel('vampire-widget-control');
-    controlChannel.onmessage=(event)=>{
-      const data=event.data||{};
-      if(data.type!=='settings')return;
-      const c=num(data.current,current);
-      const g=num(data.goal,goal);
-      if(c<0||g<=0)return;
-      current=c;
-      goal=g;
-      render(current,goal,'₽');
-    };
-  }catch(e){}  }catch(e){}
-  // Fallback communication for OBS/browser contexts that do not share BroadcastChannel.
-  window.addEventListener('storage',(event)=>{
-    if(event.key!=='vampire_current' && event.key!=='vampire_goal')return;
-    const c=num(localStorage.getItem('vampire_current'),current);
-    const g=num(localStorage.getItem('vampire_goal'),goal);
-    if(c<0||g<=0)return;
-    current=c;
-    goal=g;
-    render(current,goal,'₽');
-  });
+  async function publicState(){
+    if(!publicUid||!proxy)return;
+    try{
+      const r=await fetch(proxy+'/public-state?uid='+encodeURIComponent(publicUid),{cache:'no-store'});
+      if(!r.ok)return;
+      const s=await r.json();
+      const c=num(s.current,NaN),g=num(s.goal,NaN);
+      if(Number.isFinite(c)&&c>=0&&Number.isFinite(g)&&g>0){
+        current=c;
+        goal=g;
+        render(current,goal,'₽');
+      }
+    }catch(e){}
+  }
 
+  // Standalone widget mode: no DonationAlerts token is needed here.
+  // The control panel is the only source that talks to DonationAlerts.
+  if(publicUid&&API){
+    publicState();
+    setInterval(publicState,3000);
+    return;
+  }
 
-
-
+  const accessToken=localStorage.getItem('vampire_access_token')||'';
+  if(!accessToken||!API)return;
 
   async function api(path,opts={}){
-    if(!API)throw new Error('Worker proxy не настроен');
     const headers={...(opts.headers||{}),Authorization:'Bearer '+accessToken};
     if(opts.method==='POST')headers['Content-Type']='application/json';
     const r=await fetch(API+path,{...opts,headers});
-    const tx=await r.text();
-    let data={};try{data=JSON.parse(tx)}catch{}
-    if(!r.ok)throw new Error((data&&data.message)||('HTTP '+r.status));
+    const tx=await r.text();let data={};try{data=JSON.parse(tx)}catch{}
+    if(!r.ok)throw new Error(data.message||('HTTP '+r.status));
     return data;
   }
 
-  async function getRemoteState(){
-    if(!accessToken||!API)return null;
+  // Legacy mode: keep existing authenticated widget behavior for compatibility.
+  async function loadState(){
     try{
       const s=await api('/state');
-      const c=Number(s.current),g=Number(s.goal);
-      if(Number.isFinite(c)&&c>=0&&Number.isFinite(g)&&g>0)return {current:c,goal:g};
-    }catch(e){console.warn('Remote state GET failed:',e);}
-    return null;
+      if(Number.isFinite(Number(s.current))&&Number(s.current)>=0)current=Number(s.current);
+      if(Number.isFinite(Number(s.goal))&&Number(s.goal)>0)goal=Number(s.goal);
+      render(current,goal,'₽');
+    }catch(e){}
   }
 
-  async function setRemoteState(c,g){
-    if(!accessToken||!API)return;
-    try{
-      await api('/state',{method:'POST',body:JSON.stringify({current:c,goal:g})});
-    }catch(e){console.warn('Remote state POST failed:',e);}
-  }
-
-  function remember(id){
-    if(id===undefined||id===null)return;
-    seen.add(String(id));
-    localStorage.setItem('vampire_seen_donations',[...seen].slice(-500).join(','));
-  }
-
-  // DonationAlerts' websocket payload is:
-  // result -> channel, data -> seq, data -> donation/goal resource.
-  function unwrap(value,depth=0){
-    if(!value||typeof value!=='object'||depth>8)return null;
-    if(Number.isFinite(Number(value.goal_amount))&&Number.isFinite(Number(value.raised_amount)))
-      return {kind:'goal',data:value};
-    if(Number.isFinite(Number(value.amount)) && value.currency)
-      return {kind:'donation',data:value};
-    if(Array.isArray(value)){
-      for(const v of value){const r=unwrap(v,depth+1);if(r)return r;}
-      return null;
-    }
-    for(const k of Object.keys(value)){
-      const r=unwrap(value[k],depth+1);if(r)return r;
-    }
-    return null;
-  }
-
-  function applyGoal(payload){
-    const r=unwrap(payload);
-    if(!r||r.kind!=='goal')return;
-    const d=r.data;
-    const raised=num(d.raised_amount,NaN);
-    const target=num(d.goal_amount,NaN);
-    if(Number.isFinite(raised)&&Number.isFinite(target)&&target>0){
-      // The user chose 100 RUB as the starting amount. Do not let a newly
-      // created DonationAlerts goal with 0 raised reset that starting value.
-      current=raised>0?raised:Math.max(current,START_AMOUNT);
-      goal=target;
-      render(current,goal,currencySymbol(d.currency));
-      setRemoteState(current,goal);
-    }
-  }
-
-  function applyDonation(payload){
-    const r=unwrap(payload);
-    if(!r||r.kind!=='donation')return;
-    const d=r.data;
-    const amount=num(d.amount_in_user_currency,d.amount);
-    if(!Number.isFinite(amount)||amount<=0)return;
-    const id=d.id;
-    if(id!==undefined&&id!==null&&seen.has(String(id)))return;
-    remember(id);
-    current+=amount;
-    render(current,goal,currencySymbol(d.currency));
-  }
-
-  async function syncHistory(){
-    if(!accessToken||!API)return;
-    try{
-      // Always ask for the newest page. This catches manual/test donations
-      // even when Centrifugo does not emit a publication for them.
-      const result=await api('/alerts/donations?page=1');
-      const list=Array.isArray(result.data)?result.data:[];
-      if(!list.length)return;
-
-      // On the first history read, remember existing records but do not add
-      // them: the starting value of a newly created goal is controlled by
-      // the goal event or the setup value.
-      const firstSync=!localStorage.getItem('vampire_history_baseline_v3');
-      if(firstSync){
-        // One-time recovery: include only very recent donations so a test
-        // donation made just before this build is not lost.
-        const since=Date.now()-20*60*1000;
-        for(const d of list){
-          const ts=Date.parse(String(d.created_at||'').replace(' ','T'));
-          const isRecent=Number.isFinite(ts) ? ts>=since : false;
-          if(isRecent && d && d.id!==undefined && d.id!==null) applyDonation(d);
-          else if(d&&d.id!==undefined&&d.id!==null) remember(d.id);
-        }
-        localStorage.setItem('vampire_history_baseline_v3','1');
-        return;
-      }
-
-      // Process every unseen donation, regardless of numeric ID ordering.
-      for(const d of list){
-        if(d&&d.id!==undefined&&d.id!==null&&!seen.has(String(d.id))){
-          applyDonation(d);
-        }
-      }
-    }catch(e){
-      console.warn('Donation history sync failed:',e);
-    }
-  }
-
-  async function connect(){
-    if(!accessToken||!API)return;
-    try{
-      const me=await api('/user/oauth');
-      const u=me.data||me;
-      if(!u.id||!u.socket_connection_token)throw new Error('DonationAlerts profile/token unavailable');
-
-      socket=new WebSocket(WS);
-
-      socket.onopen=()=>{
-        socket.send(JSON.stringify({
-          params:{token:u.socket_connection_token},
-          id:1
-        }));
-      };
-
-      socket.onmessage=async(event)=>{
-        let msg;try{msg=JSON.parse(event.data)}catch{return};
-
-        if(msg.id===1&&msg.result&&msg.result.client){
-          try{
-            const channels=[
-              '$alerts:donation_'+u.id,
-              '$goals:goal_'+u.id
-            ];
-            const sub=await api('/centrifuge/subscribe',{
-              method:'POST',
-              body:JSON.stringify({channels,client:msg.result.client})
-            });
-            const creds=Array.isArray(sub.channels)?sub.channels:[];
-            creds.forEach((c,i)=>{
-              if(!c.channel||!c.token)return;
-              socket.send(JSON.stringify({
-                method:1,
-                params:{channel:c.channel,token:c.token},
-                id:100+i
-              }));
-            });
-          }catch(e){console.warn('DonationAlerts subscribe failed:',e);}
-          return;
-        }
-
-        if(msg.push){
-          const channel=msg.push.channel||'';
-          const payload=msg.push.pub&&msg.push.pub.data!==undefined
-            ? msg.push.pub.data
-            : (msg.push.pub||{});
-
-          if(channel.indexOf('$goals:goal_')===0)applyGoal(payload);
-          if(channel.indexOf('$alerts:donation_')===0)applyDonation(payload);
-        }
-      };
-
-      socket.onerror=e=>console.warn('DonationAlerts WebSocket error',e);
-      socket.onclose=()=>{reconnectTimer=setTimeout(connect,5000);};
-    }catch(e){
-      console.warn('DonationAlerts connection failed:',e);
-      reconnectTimer=setTimeout(connect,5000);
-    }
-  }
-
-  if(publicUid&&API){
-    loadPublicState();
-    setInterval(loadPublicState,3000);
-  } else if(accessToken&&API){
-    getRemoteState().then(state=>{
-      if(state){
-        current=state.current;
-        goal=state.goal;
-        render(current,goal,'₽');
-      }else{
-        setRemoteState(current,goal);
-      }
-    });
-    syncHistory();
-    setInterval(syncHistory,5000);
-    connect();
-  }
+  loadState();
+  setInterval(loadState,5000);
 })();
 </script>
 </body>
