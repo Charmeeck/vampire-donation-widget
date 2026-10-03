@@ -72,10 +72,15 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
   const num=(v,d=0)=>{const n=Number(v);return Number.isFinite(n)?n:d};
 
-  // OAuth implicit callback
+  // OAuth implicit callback. The control panel uses state=control.
   const token=hash.get('access_token');
+  const oauthState=hash.get('state')||'';
   if(token){
     localStorage.setItem('vampire_access_token',token);
+    if(oauthState==='control'){
+      location.replace('./control.html');
+      return;
+    }
     history.replaceState({},'',location.pathname+location.search);
   }
 
