@@ -60,7 +60,7 @@ export default {
       if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, origin);
       if (!env.VAMPIRE_KV) return json({ error: "VAMPIRE_KV binding is not configured" }, 503, origin);
       const uid = url.searchParams.get("uid") || "";
-      if (!/^\\d+$/.test(uid)) return json({ error: "Invalid uid" }, 400, origin);
+      if (!/^\d+$/.test(uid)) return json({ error: "Invalid uid" }, 400, origin);
       try {
         const value = await env.VAMPIRE_KV.get("state:" + uid, "json");
         return json(value || {}, 200, origin);
