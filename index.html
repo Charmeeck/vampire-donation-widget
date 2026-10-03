@@ -158,6 +158,23 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
     return data;
   }
 
+  async function getRemoteState(){
+    if(!accessToken||!API)return null;
+    try{
+      const s=await api('/state');
+      const c=Number(s.current),g=Number(s.goal);
+      if(Number.isFinite(c)&&c>=0&&Number.isFinite(g)&&g>0)return {current:c,goal:g};
+    }catch(e){console.warn('Remote state GET failed:',e);}
+    return null;
+  }
+
+  async function setRemoteState(c,g){
+    if(!accessToken||!API)return;
+    try{
+      await api('/state',{method:'POST',body:JSON.stringify({current:c,goal:g})});
+    }catch(e){console.warn('Remote state POST failed:',e);}
+  }
+
   function remember(id){
     if(id===undefined||id===null)return;
     seen.add(String(id));
@@ -194,6 +211,7 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
       current=raised>0?raised:Math.max(current,START_AMOUNT);
       goal=target;
       render(current,goal,currencySymbol(d.currency));
+      setRemoteState(current,goal);
     }
   }
 
@@ -310,8 +328,30 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
   }
 
   if(accessToken&&API){
+    getRemoteState().then(state=>{
+      if(state){
+        current=state.current;
+        goal=state.goal;
+        render(current,goal,'₽');
+      }else{
+        setRemoteState(current,goal);
+      }
+    });
+
     syncHistory();
-    setInterval(syncHistory,3000);
+    setInterval(syncHistory,5000);
+
+    // Poll shared state so a separate OBS control source can update this widget.
+    setInterval(async()=>{
+      const state=await getRemoteState();
+      if(!state)return;
+      if(Math.abs(state.current-current)>0.001 || Math.abs(state.goal-goal)>0.001){
+        current=state.current;
+        goal=state.goal;
+        render(current,goal,'₽');
+      }
+    },5000);
+
     connect();
   }
 })();
