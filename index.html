@@ -68,7 +68,7 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
 (()=>{
   const CFG=window.VAMPIRE_CONFIG||{};
   const params=new URLSearchParams(location.search);
-  const hash=new URLSearchParams(location.hash.replace(/^#/,'').replace(/^\\?/,''));
+  const hash=new URLSearchParams(location.hash.startsWith('#')?location.hash.slice(1):location.hash);
   const num=(value,fallback=0)=>{
     const n=Number(value);
     return Number.isFinite(n)?n:fallback;
