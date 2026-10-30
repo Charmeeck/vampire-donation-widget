@@ -66,76 +66,110 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
 <script src="config.js"></script>
 <script>
 (()=>{
+  'use strict';
   const CFG=window.VAMPIRE_CONFIG||{};
   const params=new URLSearchParams(location.search);
-  const hash=new URLSearchParams(location.hash.startsWith('#')?location.hash.slice(1):location.hash);
+  const hash=new URLSearchParams((location.hash||'').startsWith('#')?location.hash.slice(1):(location.hash||''));
+
+  function readStore(key){
+    try{const value=window.localStorage.getItem(key);if(value!==null)return value;}catch(e){}
+    try{const value=window.sessionStorage.getItem(key);if(value!==null)return value;}catch(e){}
+    return null;
+  }
+  function writeStore(key,value){
+    let saved=false;
+    try{window.localStorage.setItem(key,String(value));if(window.localStorage.getItem(key)===String(value))saved=true;}catch(e){}
+    try{window.sessionStorage.setItem(key,String(value));if(window.sessionStorage.getItem(key)===String(value))saved=true;}catch(e){}
+    return saved;
+  }
+  function removeStore(key){
+    try{window.localStorage.removeItem(key);}catch(e){}
+    try{window.sessionStorage.removeItem(key);}catch(e){}
+  }
   const num=(value,fallback=0)=>{
     const n=Number(value);
     return Number.isFinite(n)?n:fallback;
   };
   const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 
-  // OAuth implicit-flow callback returns to this same Browser Source origin.
+  // DonationAlerts returns both the access token and OAuth state in the URL hash.
+  let callbackState=null;
+  const stateText=hash.get('state');
+  if(stateText){
+    try{
+      const parsed=JSON.parse(stateText);
+      if(parsed&&parsed.version===1)callbackState=parsed;
+    }catch(e){}
+  }
   const returnedToken=hash.get('access_token');
-  if(returnedToken){
-    localStorage.setItem('vampire_access_token',returnedToken);
-    history.replaceState({},'',location.pathname+location.search);
+  if(returnedToken)writeStore('vampire_access_token',returnedToken);
+
+  if(callbackState){
+    if(Number.isFinite(Number(callbackState.current))&&Number(callbackState.current)>=0)
+      writeStore('vampire_current',Number(callbackState.current));
+    if(Number.isFinite(Number(callbackState.goal))&&Number(callbackState.goal)>0)
+      writeStore('vampire_goal',Number(callbackState.goal));
+    if(typeof callbackState.proxy==='string'&&callbackState.proxy.startsWith('https://'))
+      writeStore('vampire_proxy_url',callbackState.proxy);
+  }
+
+  if(returnedToken||callbackState){
+    try{history.replaceState({},'',location.pathname+location.search);}catch(e){}
   }
 
   let current=params.has('current')
     ? num(params.get('current'),0)
-    : num(localStorage.getItem('vampire_current'),0);
+    : num(readStore('vampire_current'),0);
   let goal=params.has('goal')
     ? num(params.get('goal'),10000)
-    : num(localStorage.getItem('vampire_goal'),10000);
+    : num(readStore('vampire_goal'),10000);
   if(current<0)current=0;
   if(goal<=0)goal=10000;
+  if(params.has('current'))writeStore('vampire_current',current);
+  if(params.has('goal'))writeStore('vampire_goal',goal);
 
-  const token=localStorage.getItem('vampire_access_token')||'';
-  const proxy=(localStorage.getItem('vampire_proxy_url')||CFG.PROXY_URL||'').replace(/\\/$/,'');
+  const token=readStore('vampire_access_token')||'';
+  let proxy=readStore('vampire_proxy_url')||callbackState?.proxy||CFG.PROXY_URL||'';
+  proxy=String(proxy).trim();
+  while(proxy.endsWith('/'))proxy=proxy.slice(0,-1);
   const API=proxy?proxy+'/api/v1':'';
   const WS='wss://centrifugo.donationalerts.com/connection/websocket';
 
   let socket=null;
   let reconnectTimer=null;
   let historyBusy=false;
-  let historyReady=localStorage.getItem('vampire_single_history_ready')==='1';
-  const seen=new Set((localStorage.getItem('vampire_single_seen')||'').split(',').filter(Boolean));
-
-  function currencySymbol(code){
-    return ({RUB:'₽',EUR:'€',USD:'$',GBP:'£',KZT:'₸',UAH:'₴',BYN:'Br',BRL:'R$',TRY:'₺'})[code]||'₽';
-  }
+  let historyReady=readStore('vampire_single_history_ready')==='1';
+  const seen=new Set((readStore('vampire_single_seen')||'').split(',').filter(Boolean));
 
   function render(){
     const percentage=goal>0?clamp(current/goal*100,0,100):0;
     const bottom=805,full=455;
     const top=Math.round(bottom-full*percentage/100);
     const fillHeight=Math.max(0,bottom-top);
-
     const texture=document.getElementById('tex');
     const tint=document.getElementById('tint');
     const surface=document.getElementById('surface');
     if(texture){texture.setAttribute('y',top);texture.setAttribute('height',fillHeight);}
     if(tint){tint.setAttribute('y',top);tint.setAttribute('height',fillHeight);}
     if(surface)surface.setAttribute('cy',top);
-
-    document.getElementById('sumCurrent').textContent=Math.round(current).toLocaleString('ru-RU')+' ₽';
-    document.getElementById('sumGoal').textContent=Math.round(goal).toLocaleString('ru-RU')+' ₽';
-
-    localStorage.setItem('vampire_current',String(current));
-    localStorage.setItem('vampire_goal',String(goal));
+    const currentNode=document.getElementById('sumCurrent');
+    const goalNode=document.getElementById('sumGoal');
+    if(currentNode)currentNode.textContent=Math.round(current).toLocaleString('ru-RU')+' ₽';
+    if(goalNode)goalNode.textContent=Math.round(goal).toLocaleString('ru-RU')+' ₽';
+    writeStore('vampire_current',current);
+    writeStore('vampire_goal',goal);
   }
 
   render();
 
   async function api(path,options={}){
-    if(!API)throw new Error('Worker proxy не настроен');
+    if(!API)throw new Error('Cloudflare Worker не настроен');
     const headers={...(options.headers||{}),Authorization:'Bearer '+token};
     if(options.method==='POST')headers['Content-Type']='application/json';
     const response=await fetch(API+path,{...options,headers});
-    const text=await response.text();
+    const responseText=await response.text();
     let data={};
-    try{data=JSON.parse(text)}catch{}
+    try{data=JSON.parse(responseText);}catch(e){}
     if(!response.ok)throw new Error(data.message||data.error||('HTTP '+response.status));
     return data;
   }
@@ -143,14 +177,14 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
   function rememberDonation(id){
     if(id===undefined||id===null)return;
     seen.add(String(id));
-    localStorage.setItem('vampire_single_seen',[...seen].slice(-500).join(','));
+    writeStore('vampire_single_seen',[...seen].slice(-500).join(','));
   }
 
   function extractDonation(value,depth=0){
     if(!value||typeof value!=='object'||depth>8)return null;
-    if(Number.isFinite(Number(value.amount_in_user_currency??value.amount)) &&
-       (value.currency||value.currency_code||value.amount_in_user_currency!==undefined)){
-      return value;
+    if(value.amount_in_user_currency!==undefined||value.amount!==undefined){
+      const amount=num(value.amount_in_user_currency??value.amount,NaN);
+      if(Number.isFinite(amount)&&amount>0)return value;
     }
     if(Array.isArray(value)){
       for(const item of value){
@@ -169,14 +203,13 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
   function applyGoal(payload){
     let node=payload;
     for(let i=0;i<8&&node&&typeof node==='object';i++){
-      if(node.goal && typeof node.goal==='object'){node=node.goal;continue;}
-      if(node.data && typeof node.data==='object'){node=node.data;continue;}
+      if(node.goal&&typeof node.goal==='object'){node=node.goal;continue;}
+      if(node.data&&typeof node.data==='object'){node=node.data;continue;}
       break;
     }
     const raised=num(node&&node.raised_amount,NaN);
     const target=num(node&&node.goal_amount,NaN);
     if(Number.isFinite(raised)&&Number.isFinite(target)&&target>0){
-      // An untouched zero goal does not erase the manually entered starting value.
       if(raised>0)current=raised;
       goal=target;
       render();
@@ -204,15 +237,13 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
       if(!historyReady){
         donations.forEach(item=>rememberDonation(item.id));
         historyReady=true;
-        localStorage.setItem('vampire_single_history_ready','1');
+        writeStore('vampire_single_history_ready','1');
         return;
       }
-      // Oldest first, in case several donations arrived between checks.
       donations.sort((a,b)=>(Number(a.id)||0)-(Number(b.id)||0));
       for(const donation of donations){
-        if(donation&&donation.id!==undefined&&donation.id!==null&&!seen.has(String(donation.id))){
+        if(donation&&donation.id!==undefined&&donation.id!==null&&!seen.has(String(donation.id)))
           applyDonation(donation);
-        }
       }
     }catch(error){
       console.warn('Vampire Widget: history sync failed',error);
@@ -226,7 +257,8 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
     try{
       const me=await api('/user/oauth');
       const user=me.data||me;
-      if(!user.id||!user.socket_connection_token)throw new Error('DonationAlerts не вернул данные подключения');
+      if(!user.id||!user.socket_connection_token)
+        throw new Error('DonationAlerts не вернул данные подключения');
 
       socket=new WebSocket(WS);
       socket.onopen=()=>{
@@ -234,8 +266,7 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
       };
       socket.onmessage=async(event)=>{
         let message;
-        try{message=JSON.parse(event.data)}catch{return}
-
+        try{message=JSON.parse(event.data);}catch(e){return;}
         if(message.id===1&&message.result&&message.result.client){
           try{
             const subscribed=await api('/centrifuge/subscribe',{
@@ -254,17 +285,13 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
                 }));
               }
             });
-          }catch(error){
-            console.warn('Vampire Widget: subscribe failed',error);
-          }
+          }catch(error){console.warn('Vampire Widget: subscribe failed',error);}
           return;
         }
-
         if(message.push){
           const channel=message.push.channel||'';
           const payload=message.push.pub&&message.push.pub.data!==undefined
-            ? message.push.pub.data
-            : (message.push.pub||{});
+            ?message.push.pub.data:(message.push.pub||{});
           if(channel.indexOf('$goals:goal_')===0)applyGoal(payload);
           if(channel.indexOf('$alerts:donation_')===0)applyDonation(payload);
         }
