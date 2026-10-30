@@ -1,3 +1,167 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vampire Donation Widget — подключение</title><style>
-*{box-sizing:border-box}body{margin:0;background:#09090b;color:#eee;font:15px Arial,sans-serif;display:flex;justify-content:center;padding:28px}.box{max-width:760px;width:100%;background:#17171b;border:1px solid #555;border-radius:14px;padding:24px}h1{margin:0 0 10px;color:#e62b32;font-size:25px}p{line-height:1.5;color:#ccc}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}.full{grid-column:1/-1}label{display:block;color:#bbb;font-size:14px;margin-bottom:6px}input{width:100%;padding:11px 12px;border:1px solid #555;border-radius:8px;background:#0e0e12;color:#fff;font-size:16px}.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border:0;border-radius:8px;background:#8f1018;color:#fff;font-weight:bold;text-decoration:none;cursor:pointer}.btn:hover{background:#a4141d}.btn.secondary{background:#2a2a30}.status{margin-top:14px;padding:11px 12px;background:#0e0e12;border-radius:8px;color:#ddd}.muted{color:#999;font-size:13px}.hint{color:#aaa;font-size:13px;margin-top:6px}@media(max-width:560px){.grid{grid-template-columns:1fr}.full{grid-column:auto}}
-</style></head><body><main class="box"><h1>🩸 Vampire Donation Widget</h1><p><b>Подключение выполняется в одном источнике OBS.</b> Откройте эту страницу в Browser Source, укажите сумму и цель, затем подключите DonationAlerts. После разрешения доступа DonationAlerts автоматически вернёт этот же источник на готовый виджет.</p><div class="grid"><div><label for="current">Текущая сумма</label><input id="current" type="number" min="0" step="1" value="0"></div><div><label for="goal">Цель</label><input id="goal" type="number" min="1" step="1" value="10000"></div><div class="full"><label for="proxy">Cloudflare Worker URL</label><input id="proxy" type="url" placeholder="https://....workers.dev"><div class="hint">Можно оставить адрес из конфигурации, если он уже подставился.</div></div></div><div class="row"><button class="btn secondary" id="save" type="button">💾 Сохранить настройки</button><a class="btn" id="connect" href="#">🔗 Подключить DonationAlerts</a><a class="btn secondary" href="./">🩸 Открыть виджет</a></div><div class="status" id="status">Готово.</div><div class="status" style="margin-top:10px"><b>🖥️ Ссылка для OBS:</b><br><a id="obsLink" href="./" target="_blank" style="color:#ff6670">https://charmeeck.github.io/vampire-donation-widget/</a></div><p class="muted">Для автоматической синхронизации запрашивается дополнительное право DonationAlerts: просмотр истории донатов. Client Secret не нужен.</p></main><script src="config.js"></script><script>(()=>{const cfg=window.VAMPIRE_CONFIG||{};const c=document.getElementById('current'),g=document.getElementById('goal'),p=document.getElementById('proxy'),s=document.getElementById('status');const sc=localStorage.getItem('vampire_current'),sg=localStorage.getItem('vampire_goal'),sp=localStorage.getItem('vampire_proxy_url');if(sc!==null)c.value=sc;if(sg!==null)g.value=sg;p.value=sp||cfg.PROXY_URL||'';document.getElementById('save').onclick=()=>{const cv=Number(c.value),gv=Number(g.value),pv=p.value.trim().replace(/\/$/,'');if(!Number.isFinite(cv)||!Number.isFinite(gv)||gv<=0){s.textContent='Проверь сумму и цель.';return}if(!/^https:\/\//i.test(pv)){s.textContent='Укажи адрес Worker, начинающийся с https://';return}localStorage.setItem('vampire_current',String(Math.max(0,cv)));localStorage.setItem('vampire_goal',String(gv));localStorage.setItem('vampire_proxy_url',pv);s.textContent='Настройки сохранены.'};document.getElementById('connect').onclick=e=>{e.preventDefault();const cv=Number(c.value),gv=Number(g.value),pv=p.value.trim().replace(/\/$/,'');if(!Number.isFinite(cv)||!Number.isFinite(gv)||gv<=0){s.textContent='Проверь сумму и цель.';return}if(!pv.startsWith('https://')){s.textContent='Проверь адрес Worker.';return}localStorage.setItem('vampire_current',String(Math.max(0,cv)));localStorage.setItem('vampire_goal',String(gv));localStorage.setItem('vampire_proxy_url',pv);const u=new URL('https://www.donationalerts.com/oauth/authorize');u.searchParams.set('client_id',String(cfg.CLIENT_ID||'21478'));u.searchParams.set('redirect_uri',String(cfg.REDIRECT_URI||'https://charmeeck.github.io/vampire-donation-widget/'));u.searchParams.set('response_type','token');u.searchParams.set('scope','oauth-user-show oauth-donation-index oauth-donation-subscribe oauth-goal-subscribe');u.searchParams.set('prompt','consent');location.href=u.toString()}})();</script></body></html>
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vampire Donation Widget — подключение</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:28px;background:#09090b;color:#eee;font:15px Arial,sans-serif;display:flex;justify-content:center}
+.box{width:100%;max-width:760px;padding:24px;background:#17171b;border:1px solid #555;border-radius:14px}
+h1{margin:0 0 10px;color:#e62b32;font-size:25px}
+p{line-height:1.5;color:#ccc}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+.full{grid-column:1/-1}
+label{display:block;margin-bottom:6px;color:#bbb;font-size:14px}
+input{width:100%;padding:11px 12px;border:1px solid #555;border-radius:8px;background:#0e0e12;color:#fff;font-size:16px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border:0;border-radius:8px;background:#8f1018;color:#fff;font-weight:bold;text-decoration:none;cursor:pointer}
+.btn:hover{background:#a4141d}
+.btn.secondary{background:#2a2a30}
+.status{margin-top:14px;padding:12px;background:#0e0e12;border-radius:8px;color:#ddd;white-space:pre-wrap}
+.muted{color:#999;font-size:13px}
+.hint{margin-top:6px;color:#aaa;font-size:13px}
+@media(max-width:560px){body{padding:12px}.box{padding:18px}.grid{grid-template-columns:1fr}.full{grid-column:auto}}
+</style>
+</head>
+<body>
+<main class="box">
+<h1>🩸 Vampire Donation Widget</h1>
+<p><b>Настройка выполняется в одном источнике OBS.</b> Введите текущую сумму и цель. Сначала нажмите «Сохранить настройки», затем подключите DonationAlerts. После авторизации страница вернётся к основному виджету.</p>
+<div class="grid">
+  <div><label for="current">Начальная / текущая сумма</label><input id="current" type="number" min="0" step="1" value="0"></div>
+  <div><label for="goal">Конечная сумма / цель</label><input id="goal" type="number" min="1" step="1" value="10000"></div>
+  <div class="full"><label for="proxy">Cloudflare Worker URL</label><input id="proxy" type="url" placeholder="https://....workers.dev"><div class="hint">Адрес подставляется автоматически. Для сохранения сумм его указывать не обязательно.</div></div>
+</div>
+<div class="row">
+  <button class="btn secondary" id="save" type="button">💾 Сохранить настройки</button>
+  <button class="btn" id="connect" type="button">🔗 Подключить DonationAlerts</button>
+  <a class="btn secondary" id="openWidget" href="./">🩸 Открыть виджет</a>
+</div>
+<div class="status" id="status" role="status">Страница готова.</div>
+<p class="muted">Для автоматической синхронизации нужны разрешения DonationAlerts на просмотр профиля, донатов и подписку на события. Client Secret не требуется.</p>
+</main>
+<script src="config.js?v=20261030-4"></script>
+<script>
+(()=>{
+  'use strict';
+  const cfg=window.VAMPIRE_CONFIG||{};
+  const $=id=>document.getElementById(id);
+  const currentInput=$('current');
+  const goalInput=$('goal');
+  const proxyInput=$('proxy');
+  const status=$('status');
+  const openWidget=$('openWidget');
+
+  // OBS/CEF may restrict one of the browser storage APIs. Never let that
+  // stop the page from attaching its buttons.
+  function readStore(key){
+    try{const value=window.localStorage.getItem(key);if(value!==null)return value;}catch(e){}
+    try{const value=window.sessionStorage.getItem(key);if(value!==null)return value;}catch(e){}
+    return null;
+  }
+  function writeStore(key,value){
+    let saved=false;
+    try{window.localStorage.setItem(key,String(value));if(window.localStorage.getItem(key)===String(value))saved=true;}catch(e){}
+    try{window.sessionStorage.setItem(key,String(value));if(window.sessionStorage.getItem(key)===String(value))saved=true;}catch(e){}
+    return saved;
+  }
+  function cleanWorker(value){
+    let result=String(value||'').trim();
+    while(result.endsWith('/'))result=result.slice(0,-1);
+    return result;
+  }
+  function validAmounts(){
+    const currentText=currentInput.value.trim();
+    const goalText=goalInput.value.trim();
+    const current=Number(currentText);
+    const goal=Number(goalText);
+    if(currentText===''||!Number.isFinite(current)||current<0){
+      throw new Error('Начальная сумма должна быть числом не меньше нуля.');
+    }
+    if(goalText===''||!Number.isFinite(goal)||goal<=0){
+      throw new Error('Цель должна быть числом больше нуля.');
+    }
+    return {current,goal};
+  }
+  function saveValues(){
+    const amounts=validAmounts();
+    const worker=cleanWorker(proxyInput.value||cfg.PROXY_URL||'');
+    const results=[
+      writeStore('vampire_current',amounts.current),
+      writeStore('vampire_goal',amounts.goal)
+    ];
+    if(worker)writeStore('vampire_proxy_url',worker);
+    const next=new URL('./',location.href);
+    next.searchParams.set('current',String(amounts.current));
+    next.searchParams.set('goal',String(amounts.goal));
+    openWidget.href=next.href;
+    return {amounts,worker,stored:results.every(Boolean)};
+  }
+
+  // Restore previously saved values without assuming localStorage is available.
+  const savedCurrent=readStore('vampire_current');
+  const savedGoal=readStore('vampire_goal');
+  const savedWorker=readStore('vampire_proxy_url');
+  if(savedCurrent!==null)currentInput.value=savedCurrent;
+  if(savedGoal!==null)goalInput.value=savedGoal;
+  proxyInput.value=savedWorker||cfg.PROXY_URL||'';
+
+  // Keep the launch link synchronized even before the Save button is clicked.
+  function updateWidgetLink(){
+    try{
+      const amounts=validAmounts();
+      const next=new URL('./',location.href);
+      next.searchParams.set('current',String(amounts.current));
+      next.searchParams.set('goal',String(amounts.goal));
+      openWidget.href=next.href;
+    }catch(e){}
+  }
+  currentInput.addEventListener('input',updateWidgetLink);
+  goalInput.addEventListener('input',updateWidgetLink);
+  updateWidgetLink();
+
+  $('save').addEventListener('click',()=>{
+    try{
+      const result=saveValues();
+      if(result.stored){
+        status.textContent='Настройки сохранены.\nНачальная сумма: '+result.amounts.current+'\nЦель: '+result.amounts.goal+'\nТеперь нажмите «Открыть виджет» или подключите DonationAlerts.';
+      }else{
+        status.textContent='Браузер не разрешил сохранить данные во внутреннее хранилище.\nСсылка на виджет с введёнными суммами подготовлена — нажмите «Открыть виджет».';
+      }
+    }catch(error){
+      status.textContent=error.message||'Не удалось сохранить настройки.';
+    }
+  });
+
+  $('connect').addEventListener('click',()=>{
+    try{
+      const result=saveValues();
+      const worker=result.worker;
+      if(!worker||!worker.startsWith('https://')){
+        throw new Error('Не найден адрес Cloudflare Worker. Обновите страницу или укажите адрес вида https://....workers.dev');
+      }
+      // OAuth state carries the settings back to the widget even when browser
+      // storage is unavailable during an OBS redirect.
+      const state=JSON.stringify({
+        version:1,
+        current:result.amounts.current,
+        goal:result.amounts.goal,
+        proxy:worker
+      });
+      const auth=new URL('https://www.donationalerts.com/oauth/authorize');
+      auth.searchParams.set('client_id',String(cfg.CLIENT_ID||'21478'));
+      auth.searchParams.set('redirect_uri',String(cfg.REDIRECT_URI||'https://charmeeck.github.io/vampire-donation-widget/'));
+      auth.searchParams.set('response_type','token');
+      auth.searchParams.set('scope','oauth-user-show oauth-donation-index oauth-donation-subscribe oauth-goal-subscribe');
+      auth.searchParams.set('state',state);
+      auth.searchParams.set('prompt','consent');
+      location.href=auth.toString();
+    }catch(error){
+      status.textContent=error.message||'Не удалось начать подключение DonationAlerts.';
+    }
+  });
+})();
+</script>
+</body>
+</html>
