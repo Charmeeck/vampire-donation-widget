@@ -67,99 +67,225 @@ html,body{margin:0;width:1672px;height:941px;background:transparent;overflow:hid
 <script>
 (()=>{
   const CFG=window.VAMPIRE_CONFIG||{};
-  const q=new URLSearchParams(location.search);
-  const hash=new URLSearchParams(location.hash.replace(/^#/,'').replace(/^\?/,''));  
-  const num=(v,d=0)=>{const n=Number(v);return Number.isFinite(n)?n:d};
-  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+  const params=new URLSearchParams(location.search);
+  const hash=new URLSearchParams(location.hash.replace(/^#/,'').replace(/^\\?/,''));
+  const num=(value,fallback=0)=>{
+    const n=Number(value);
+    return Number.isFinite(n)?n:fallback;
+  };
+  const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 
-  // OAuth callback for the legacy/setup flow.
-  const token=hash.get('access_token');
-  const state=hash.get('state')||'';
-  if(token){
-    localStorage.setItem('vampire_access_token',token);
-    if(state==='control'){
-      location.replace('./control.html');
-      return;
-    }
+  // OAuth implicit-flow callback returns to this same Browser Source origin.
+  const returnedToken=hash.get('access_token');
+  if(returnedToken){
+    localStorage.setItem('vampire_access_token',returnedToken);
     history.replaceState({},'',location.pathname+location.search);
   }
 
-  const proxy=(localStorage.getItem('vampire_proxy_url')||CFG.PROXY_URL||'').replace(/\/$/,'');
+  let current=params.has('current')
+    ? num(params.get('current'),0)
+    : num(localStorage.getItem('vampire_current'),0);
+  let goal=params.has('goal')
+    ? num(params.get('goal'),10000)
+    : num(localStorage.getItem('vampire_goal'),10000);
+  if(current<0)current=0;
+  if(goal<=0)goal=10000;
+
+  const token=localStorage.getItem('vampire_access_token')||'';
+  const proxy=(localStorage.getItem('vampire_proxy_url')||CFG.PROXY_URL||'').replace(/\\/$/,'');
   const API=proxy?proxy+'/api/v1':'';
-  const publicUid=q.get('uid');
+  const WS='wss://centrifugo.donationalerts.com/connection/websocket';
 
-  let current=num(q.get('current'),num(localStorage.getItem('vampire_current'),0));
-  let goal=num(q.get('goal'),num(localStorage.getItem('vampire_goal'),10000));
+  let socket=null;
+  let reconnectTimer=null;
+  let historyBusy=false;
+  let historyReady=localStorage.getItem('vampire_single_history_ready')==='1';
+  const seen=new Set((localStorage.getItem('vampire_single_seen')||'').split(',').filter(Boolean));
 
-  function render(c,g,symbol='₽'){
-    c=num(c);g=num(g,1);
-    const p=clamp(c/g*100,0,100);
-    const bottom=805,full=455,top=Math.round(bottom-full*p/100);
-    const height=Math.max(0,bottom-top);
+  function currencySymbol(code){
+    return ({RUB:'₽',EUR:'€',USD:'$',GBP:'£',KZT:'₸',UAH:'₴',BYN:'Br',BRL:'R$',TRY:'₺'})[code]||'₽';
+  }
 
-    const tex=document.getElementById('tex');
+  function render(){
+    const percentage=goal>0?clamp(current/goal*100,0,100):0;
+    const bottom=805,full=455;
+    const top=Math.round(bottom-full*percentage/100);
+    const fillHeight=Math.max(0,bottom-top);
+
+    const texture=document.getElementById('tex');
     const tint=document.getElementById('tint');
     const surface=document.getElementById('surface');
-    if(tex){tex.setAttribute('y',top);tex.setAttribute('height',height);}
-    if(tint){tint.setAttribute('y',top);tint.setAttribute('height',height);}
+    if(texture){texture.setAttribute('y',top);texture.setAttribute('height',fillHeight);}
+    if(tint){tint.setAttribute('y',top);tint.setAttribute('height',fillHeight);}
     if(surface)surface.setAttribute('cy',top);
 
-    document.getElementById('sumCurrent').textContent=Math.round(c).toLocaleString('ru-RU')+' '+symbol;
-    document.getElementById('sumGoal').textContent=Math.round(g).toLocaleString('ru-RU')+' '+symbol;
+    document.getElementById('sumCurrent').textContent=Math.round(current).toLocaleString('ru-RU')+' ₽';
+    document.getElementById('sumGoal').textContent=Math.round(goal).toLocaleString('ru-RU')+' ₽';
 
-    localStorage.setItem('vampire_current',String(c));
-    localStorage.setItem('vampire_goal',String(g));
+    localStorage.setItem('vampire_current',String(current));
+    localStorage.setItem('vampire_goal',String(goal));
   }
 
-  render(current,goal,'₽');
+  render();
 
-  async function publicState(){
-    if(!publicUid||!proxy)return;
-    try{
-      const r=await fetch(proxy+'/public-state?uid='+encodeURIComponent(publicUid),{cache:'no-store'});
-      if(!r.ok)return;
-      const s=await r.json();
-      const c=num(s.current,NaN),g=num(s.goal,NaN);
-      if(Number.isFinite(c)&&c>=0&&Number.isFinite(g)&&g>0){
-        current=c;
-        goal=g;
-        render(current,goal,'₽');
-      }
-    }catch(e){}
-  }
-
-  // Standalone widget mode: no DonationAlerts token is needed here.
-  // The control panel is the only source that talks to DonationAlerts.
-  if(publicUid&&API){
-    publicState();
-    setInterval(publicState,3000);
-    return;
-  }
-
-  const accessToken=localStorage.getItem('vampire_access_token')||'';
-  if(!accessToken||!API)return;
-
-  async function api(path,opts={}){
-    const headers={...(opts.headers||{}),Authorization:'Bearer '+accessToken};
-    if(opts.method==='POST')headers['Content-Type']='application/json';
-    const r=await fetch(API+path,{...opts,headers});
-    const tx=await r.text();let data={};try{data=JSON.parse(tx)}catch{}
-    if(!r.ok)throw new Error(data.message||('HTTP '+r.status));
+  async function api(path,options={}){
+    if(!API)throw new Error('Worker proxy не настроен');
+    const headers={...(options.headers||{}),Authorization:'Bearer '+token};
+    if(options.method==='POST')headers['Content-Type']='application/json';
+    const response=await fetch(API+path,{...options,headers});
+    const text=await response.text();
+    let data={};
+    try{data=JSON.parse(text)}catch{}
+    if(!response.ok)throw new Error(data.message||data.error||('HTTP '+response.status));
     return data;
   }
 
-  // Legacy mode: keep existing authenticated widget behavior for compatibility.
-  async function loadState(){
-    try{
-      const s=await api('/state');
-      if(Number.isFinite(Number(s.current))&&Number(s.current)>=0)current=Number(s.current);
-      if(Number.isFinite(Number(s.goal))&&Number(s.goal)>0)goal=Number(s.goal);
-      render(current,goal,'₽');
-    }catch(e){}
+  function rememberDonation(id){
+    if(id===undefined||id===null)return;
+    seen.add(String(id));
+    localStorage.setItem('vampire_single_seen',[...seen].slice(-500).join(','));
   }
 
-  loadState();
-  setInterval(loadState,5000);
+  function extractDonation(value,depth=0){
+    if(!value||typeof value!=='object'||depth>8)return null;
+    if(Number.isFinite(Number(value.amount_in_user_currency??value.amount)) &&
+       (value.currency||value.currency_code||value.amount_in_user_currency!==undefined)){
+      return value;
+    }
+    if(Array.isArray(value)){
+      for(const item of value){
+        const found=extractDonation(item,depth+1);
+        if(found)return found;
+      }
+      return null;
+    }
+    for(const key of Object.keys(value)){
+      const found=extractDonation(value[key],depth+1);
+      if(found)return found;
+    }
+    return null;
+  }
+
+  function applyGoal(payload){
+    let node=payload;
+    for(let i=0;i<8&&node&&typeof node==='object';i++){
+      if(node.goal && typeof node.goal==='object'){node=node.goal;continue;}
+      if(node.data && typeof node.data==='object'){node=node.data;continue;}
+      break;
+    }
+    const raised=num(node&&node.raised_amount,NaN);
+    const target=num(node&&node.goal_amount,NaN);
+    if(Number.isFinite(raised)&&Number.isFinite(target)&&target>0){
+      // An untouched zero goal does not erase the manually entered starting value.
+      if(raised>0)current=raised;
+      goal=target;
+      render();
+    }
+  }
+
+  function applyDonation(payload){
+    const donation=extractDonation(payload);
+    if(!donation)return;
+    const id=donation.id;
+    if(id!==undefined&&id!==null&&seen.has(String(id)))return;
+    const amount=num(donation.amount_in_user_currency??donation.amount,NaN);
+    if(!Number.isFinite(amount)||amount<=0)return;
+    rememberDonation(id);
+    current+=amount;
+    render();
+  }
+
+  async function syncHistory(){
+    if(!token||!API||historyBusy)return;
+    historyBusy=true;
+    try{
+      const result=await api('/alerts/donations?page=1');
+      const donations=Array.isArray(result.data)?result.data:[];
+      if(!historyReady){
+        donations.forEach(item=>rememberDonation(item.id));
+        historyReady=true;
+        localStorage.setItem('vampire_single_history_ready','1');
+        return;
+      }
+      // Oldest first, in case several donations arrived between checks.
+      donations.sort((a,b)=>(Number(a.id)||0)-(Number(b.id)||0));
+      for(const donation of donations){
+        if(donation&&donation.id!==undefined&&donation.id!==null&&!seen.has(String(donation.id))){
+          applyDonation(donation);
+        }
+      }
+    }catch(error){
+      console.warn('Vampire Widget: history sync failed',error);
+    }finally{
+      historyBusy=false;
+    }
+  }
+
+  async function connect(){
+    if(!token||!API)return;
+    try{
+      const me=await api('/user/oauth');
+      const user=me.data||me;
+      if(!user.id||!user.socket_connection_token)throw new Error('DonationAlerts не вернул данные подключения');
+
+      socket=new WebSocket(WS);
+      socket.onopen=()=>{
+        socket.send(JSON.stringify({params:{token:user.socket_connection_token},id:1}));
+      };
+      socket.onmessage=async(event)=>{
+        let message;
+        try{message=JSON.parse(event.data)}catch{return}
+
+        if(message.id===1&&message.result&&message.result.client){
+          try{
+            const subscribed=await api('/centrifuge/subscribe',{
+              method:'POST',
+              body:JSON.stringify({
+                channels:['$alerts:donation_'+user.id,'$goals:goal_'+user.id],
+                client:message.result.client
+              })
+            });
+            (subscribed.channels||[]).forEach((channel,index)=>{
+              if(channel.channel&&channel.token){
+                socket.send(JSON.stringify({
+                  method:1,
+                  params:{channel:channel.channel,token:channel.token},
+                  id:100+index
+                }));
+              }
+            });
+          }catch(error){
+            console.warn('Vampire Widget: subscribe failed',error);
+          }
+          return;
+        }
+
+        if(message.push){
+          const channel=message.push.channel||'';
+          const payload=message.push.pub&&message.push.pub.data!==undefined
+            ? message.push.pub.data
+            : (message.push.pub||{});
+          if(channel.indexOf('$goals:goal_')===0)applyGoal(payload);
+          if(channel.indexOf('$alerts:donation_')===0)applyDonation(payload);
+        }
+      };
+      socket.onerror=error=>console.warn('Vampire Widget: websocket error',error);
+      socket.onclose=()=>{
+        if(reconnectTimer)clearTimeout(reconnectTimer);
+        reconnectTimer=setTimeout(connect,5000);
+      };
+    }catch(error){
+      console.warn('Vampire Widget: connection failed',error);
+      if(reconnectTimer)clearTimeout(reconnectTimer);
+      reconnectTimer=setTimeout(connect,5000);
+    }
+  }
+
+  if(token&&API){
+    syncHistory();
+    setInterval(syncHistory,5000);
+    connect();
+  }
 })();
 </script>
 </body>
